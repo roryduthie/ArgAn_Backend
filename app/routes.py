@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, session, Markup
+from flask import render_template, request, redirect, session, Markup, send_file
 from . import app
 import pandas as pd
 from urllib.request import urlopen
@@ -144,6 +144,50 @@ def eigen_cent_vis(ids):
     )
     return response
 
+@app.route('/eigen-cent-cloud-vis-view/<ids>', methods=["GET"])
+def eigen_cent_cloud_vis_view(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+    i_nodes = get_eigen_cent(graph)
+
+    df = pd.DataFrame(i_nodes, columns=['id', 'cent', 'text'])
+    df = df.sort_values('cent', ascending=False)
+    df_sel = df.head(20)
+
+
+    comment_words = ''
+    stopwords = set(STOPWORDS)
+
+    for val in df_sel['text']:
+        val = str(val)
+        tokens = val.split()
+
+        for i in range(len(tokens)):
+            tokens[i] = tokens[i].lower()
+
+        comment_words += " ".join(tokens)+" "
+
+    wordcloud = WordCloud(width = 200, height = 200,
+                background_color ='white',
+                stopwords = stopwords,
+                min_font_size = 10).generate(comment_words)
+
+
+    plt.figure(figsize = (2, 2), facecolor = None)
+    plt.imshow(wordcloud)
+    plt.axis("off")
+    plt.tight_layout(pad = 0)
+    img = BytesIO()
+    plt.savefig(img, format='png')
+    img.seek(0)
+    plt.close()
+    plot_url = base64.b64encode(img.getvalue()).decode('utf8')
+
+
+    return render_template('plot.html', plot_url=plot_url)
+
 @app.route('/eigen-cent-cloud-vis/<ids>', methods=["GET"])
 def eigen_cent_cloud_vis(ids):
 
@@ -186,4 +230,10 @@ def eigen_cent_cloud_vis(ids):
     plot_url = base64.b64encode(img.getvalue()).decode('utf8')
 
 
-    return render_template('plot.html', plot_url=plot_url)
+
+    response = app.response_class(
+        response=json.dumps(plot_url),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
