@@ -1,0 +1,8 @@
+version: '2'
+
+services:
+ argnav:
+  container_name: arganbackend
+  build: .
+  ports:
+  - "8400:8400"
