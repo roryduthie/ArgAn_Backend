@@ -29,7 +29,7 @@ def test():
     data = {
         "user": "John Doe",
     }
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(data),
         status=200,
         mimetype='application/json'
@@ -80,7 +80,7 @@ def eigen_cent_raw(ids):
         data_list.append(data_dict)
 
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(data_list),
         status=200,
         mimetype='application/json'
@@ -137,7 +137,7 @@ def eigen_cent_vis(ids):
         )
     )
     dv = plotly.io.to_html(fig, include_plotlyjs=False, full_html=False)
-    response = app.response_class(
+    response = application.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
@@ -231,7 +231,7 @@ def eigen_cent_cloud_vis(ids):
 
 
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(plot_url),
         status=200,
         mimetype='application/json'
