@@ -1,5 +1,5 @@
 from flask import render_template, request, redirect, session, Markup, send_file
-from . import app
+from . import application
 import pandas as pd
 from urllib.request import urlopen
 from app.centrality import Centrality
@@ -19,12 +19,12 @@ import matplotlib.pyplot as plt
 matplotlib.use('Agg')
 
 
-@app.route('/')
-@app.route('/index')
+@application.route('/')
+@application.route('/index')
 def index():
     return redirect('/home')
 
-@app.route('/home')
+@application.route('/home')
 def test():
     data = {
         "user": "John Doe",
@@ -61,7 +61,7 @@ def get_eigen_cent(graph):
 
     return i_nodes
 
-@app.route('/eigen-cent-raw/<ids>', methods=["GET"])
+@application.route('/eigen-cent-raw/<ids>', methods=["GET"])
 def eigen_cent_raw(ids):
 
     arg_map = is_map(ids)
@@ -87,7 +87,7 @@ def eigen_cent_raw(ids):
     )
     return response
 
-@app.route('/eigen-cent-vis-view/<ids>', methods=["GET"])
+@application.route('/eigen-cent-vis-view/<ids>', methods=["GET"])
 def eigen_cent_vis_view(ids):
 
     arg_map = is_map(ids)
@@ -114,7 +114,7 @@ def eigen_cent_vis_view(ids):
                                div_placeholder=Markup(dv)
                               )
 
-@app.route('/eigen-cent-vis/<ids>', methods=["GET"])
+@application.route('/eigen-cent-vis/<ids>', methods=["GET"])
 def eigen_cent_vis(ids):
 
     arg_map = is_map(ids)
@@ -144,7 +144,7 @@ def eigen_cent_vis(ids):
     )
     return response
 
-@app.route('/eigen-cent-cloud-vis-view/<ids>', methods=["GET"])
+@application.route('/eigen-cent-cloud-vis-view/<ids>', methods=["GET"])
 def eigen_cent_cloud_vis_view(ids):
 
     arg_map = is_map(ids)
@@ -188,7 +188,7 @@ def eigen_cent_cloud_vis_view(ids):
 
     return render_template('plot.html', plot_url=plot_url)
 
-@app.route('/eigen-cent-cloud-vis/<ids>', methods=["GET"])
+@application.route('/eigen-cent-cloud-vis/<ids>', methods=["GET"])
 def eigen_cent_cloud_vis(ids):
 
     arg_map = is_map(ids)
