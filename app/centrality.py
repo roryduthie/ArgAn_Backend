@@ -1,5 +1,5 @@
 from .load_map import CorpusLoader
-from . import application
+from . import app
 import json
 import requests
 from datetime import datetime
@@ -167,6 +167,10 @@ class Centrality:
         i_nodes =  [(x,y['text']) for x,y in graph.nodes(data=True) if y['type']=='I']
         return i_nodes
     @staticmethod
+    def get_i_node_ids(graph):
+        i_nodes =  [(x) for x,y in graph.nodes(data=True) if y['type']=='I']
+        return i_nodes
+    @staticmethod
     def get_extended_i_node_list(graph, nodeset_id):
         i_nodes =  [(x,y['text'], nodeset_id) for x,y in graph.nodes(data=True) if y['type']=='I']
         return i_nodes
@@ -292,3 +296,128 @@ class Centrality:
             ra_tup = (ra, i_1_text, i_2_text)
             ra_tups.append(ra_tup)
         return ra_tups
+
+    @staticmethod
+    def get_ass_ya(graph):
+        ya_nodes =  [x for x,y in graph.nodes(data=True) if y['type']=='YA' and y['text']=='Asserting' or y['type']=='YA' and y['text']=='Hypothesising']
+        return ya_nodes
+
+    @staticmethod
+    def get_TAs(graph):
+        ta_nodes =  [x for x,y in graph.nodes(data=True) if y['type']=='TA']
+        return ta_nodes
+
+    @staticmethod
+    def get_ya_i_nodes(graph, yas):
+        ya_i = []
+        for ya in yas:
+            node_succ = list(graph.successors(ya))
+            i_1 = node_succ[0]
+            ya_i.append(i_1)
+        return ya_i
+
+    @staticmethod
+    def get_i_ra_ca_nodes(graph, i_nodes):
+        ra_list = []
+        ca_list = []
+        for i in i_nodes:
+            node_succ = list(graph.predecessors(i))
+
+            for n in node_succ:
+                n_type = graph.nodes[n]['type']
+                if n_type == 'RA':
+                    ra_list.append(n)
+                if n_type == 'CA':
+                    ca_list.append(n)
+        return ra_list, ca_list
+    @staticmethod
+    def get_i_ya_nodes(graph, i_nodes):
+        ya_list = []
+        i_count = []
+
+        for i in i_nodes:
+            node_succ = list(graph.predecessors(i))
+            ya_count = 0
+            i_text = graph.nodes[i]['text']
+            for n in node_succ:
+                n_type = graph.nodes[n]['type']
+                n_text = graph.nodes[n]['text']
+                if n_type == 'YA' and n_text == 'Asserting' or n_type == 'YA' and n_text == 'Agreeing' or n_type == 'YA' and n_text == 'Hypothesising':
+                    ya_list.append(n)
+                    ya_count = ya_count + 1
+
+            i_count_tup = (ya_count, i_text)
+            i_count.append(i_count_tup)
+        return ya_list, i_count
+
+    @staticmethod
+    def get_l_ta_nodes(graph, l_nodes):
+        ta_list = []
+        for lnode in l_nodes:
+            l = lnode[0]
+            node_succ = list(graph.predecessors(l))
+            for n in node_succ:
+                n_type = graph.nodes[n]['type']
+                if n_type == 'TA':
+                    ta_list.append(n)
+                    break
+        return ta_list
+    @staticmethod
+    def get_isolated_nodes(graph):
+        isos = list(nx.isolates(graph))
+        return isos
+    @staticmethod
+    def get_l_node_text(i_node_id, lnode_inode_list, l_node_list):
+        for rel_tup in lnode_inode_list:
+            lnode_id = rel_tup[0]
+            inode_id = rel_tup[1]
+
+            if i_node_id == inode_id:
+                for tups in l_node_list:
+                    l_id = tups[0]
+                    if l_id == lnode_id:
+                        ltext = tups[1]
+                        return l_id, ltext
+    @staticmethod
+    def get_i_node_speaker_list(i_nodes, l_nodes, l_node_i_node_list,centra):
+        new_i_nodes = []
+        for i_node in i_nodes:
+            ID = i_node[0]
+            text = i_node[1]
+            l_id, l_text = centra.get_l_node_text(ID, l_node_i_node_list, l_nodes)
+            speaker = l_text.split(':')[0]
+            new_i_node = (ID, text, speaker)
+            new_i_nodes.append(new_i_node)
+        return new_i_nodes
+
+    @staticmethod
+    def get_i_node_speaker(ID,i_node_speaker_list):
+        for i_node in i_node_speaker_list:
+            nodeID = i_node[0]
+            text = i_node[1]
+            speaker = i_node[2]
+
+            if ID == nodeID:
+                return speaker
+    @staticmethod
+    def get_ra_ma_speaker_count(graph, i_nodes_speak, centra):
+        i_count = []
+        for i_node in i_nodes_speak:
+            ID = i_node[0]
+            text = i_node[1]
+            speaker = i_node[2]
+            count = 0
+            node_pres = list(graph.predecessors(ID))
+            for n in node_pres:
+                n_type = graph.nodes[n]['type']
+                if n_type == 'RA' or n_type == 'MA':
+                    i_node_pres = list(graph.predecessors(n))
+                    for node in i_node_pres:
+                        node_type = graph.nodes[node]['type']
+                        if node_type == 'I':
+                            speaker_2 = centra.get_i_node_speaker(node,i_nodes_speak)
+                            if speaker != speaker_2:
+                                count = count + 1
+            i_count_tup = (count, text)
+            i_count.append(i_count_tup)
+        return i_count
