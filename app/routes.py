@@ -405,6 +405,11 @@ def get_popularity(graph, centra):
     yas, i_node_tups = centra.get_i_ya_nodes(graph, i_nodes)
     return i_node_tups
 
+def get_unpopularity(graph, centra):
+    i_nodes = centra.get_i_node_ids(graph)
+    yas, i_node_tups = centra.get_i_ya_dis_nodes(graph, i_nodes)
+    return i_node_tups
+
 @app.route('/popularity-raw/<ids>', methods=["GET"])
 def popularity_raw(ids):
     arg_map = is_map(ids)
@@ -439,6 +444,25 @@ def get_appeal(graph, centra, popularity_list):
     appeal_list = merge_df.to_records().tolist()
     return appeal_list
 
+def get_unappeal(graph, centra, popularity_list):
+
+    l_node_i_node_list = centra.get_loc_prop_pair(graph)
+    i_nodes = centra.get_i_node_list(graph)
+    l_nodes = centra.get_l_node_list(graph)
+    new_i_nodes = centra.get_i_node_speaker_list(i_nodes, l_nodes, l_node_i_node_list,centra)
+    new_i_nodes = centra.get_i_node_speaker_list(i_nodes, l_nodes, l_node_i_node_list,centra)
+    popularity_2_list = centra.get_ca_ma_speaker_count(graph, new_i_nodes,centra)
+    df1 = pd.DataFrame(popularity_list, columns =['Val', 'Text'])
+    df2 = pd.DataFrame(popularity_2_list, columns =['Val', 'Text'])
+
+    df1 = df1.set_index(['Text'])
+    df2 = df2.set_index(['Text'])
+
+    merge_df = df1.add(df2, fill_value=0)
+
+    appeal_list = merge_df.to_records().tolist()
+    return appeal_list
+
 
 
 @app.route('/appeal-raw/<ids>', methods=["GET"])
@@ -456,6 +480,23 @@ def appeal_raw(ids):
         mimetype='application/json'
     )
     return response
+
+@app.route('/unappeal-raw/<ids>', methods=["GET"])
+def unappeal_raw(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    popularity_list = get_unpopularity(graph, centra)
+    appeal_list = get_unappeal(graph, centra, popularity_list)
+
+    response = app.response_class(
+        response=json.dumps(appeal_list),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
 def get_node_divisiveness(ra_list,ca_list):
     ra_count = len(ra_list)
     div_scores = []
@@ -489,6 +530,55 @@ def divisiveness_raw(ids):
 
     response = app.response_class(
         response=json.dumps(divisiveness_list),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@app.route('/statistics-raw/<ids>', methods=["GET"])
+def statistics_raw(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    i_nodes = centra.get_i_node_list(graph)
+    l_nodes = centra.get_l_node_list(graph)
+
+    data = jsn['nodes']
+    df_nodes = pd.DataFrame.from_dict(data, orient='columns')
+
+    RA_nodes = df_nodes[df_nodes['type']=='RA']
+    CA_nodes = df_nodes[df_nodes['type']=='CA']
+    MA_nodes = df_nodes[df_nodes['type']=='MA']
+    YA_nodes = df_nodes[df_nodes['type']=='YA']
+
+    ras = RA_nodes['text'].value_counts().to_frame().reset_index()
+    ras.columns = ['text', 'count']
+
+    cas = CA_nodes['text'].value_counts().to_frame().reset_index()
+    cas.columns = ['text', 'count']
+
+    mas = MA_nodes['text'].value_counts().to_frame().reset_index()
+    mas.columns = ['text', 'count']
+
+    yas = YA_nodes['text'].value_counts().to_frame().reset_index()
+    yas.columns = ['text', 'count']
+
+    overall_df = pd.concat([ras, cas, mas, yas], ignore_index=True)
+
+    l_node_count = len(l_nodes)
+    i_node_count = len(i_nodes)
+
+    new_loc_row = {'text':'Locutions', 'count':l_node_count}
+    new_prop_row = {'text':'Propositions', 'count':i_node_count}
+
+    overall_df = overall_df.append(new_loc_row, ignore_index=True)
+    overall_df = overall_df.append(new_prop_row, ignore_index=True)
+
+    data_dict = overall_df.to_dict(orient='records')
+
+    response = app.response_class(
+        response=json.dumps(data_dict),
         status=200,
         mimetype='application/json'
     )

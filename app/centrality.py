@@ -352,6 +352,26 @@ class Centrality:
         return ya_list, i_count
 
     @staticmethod
+    def get_i_ya_dis_nodes(graph, i_nodes):
+        ya_list = []
+        i_count = []
+
+        for i in i_nodes:
+            node_succ = list(graph.predecessors(i))
+            ya_count = 0
+            i_text = graph.nodes[i]['text']
+            for n in node_succ:
+                n_type = graph.nodes[n]['type']
+                n_text = graph.nodes[n]['text']
+                if n_type == 'YA' and n_text == 'Disagreeing':
+                    ya_list.append(n)
+                    ya_count = ya_count + 1
+
+            i_count_tup = (ya_count, i_text)
+            i_count.append(i_count_tup)
+        return ya_list, i_count
+
+    @staticmethod
     def get_l_ta_nodes(graph, l_nodes):
         ta_list = []
         for lnode in l_nodes:
@@ -412,6 +432,29 @@ class Centrality:
             for n in node_pres:
                 n_type = graph.nodes[n]['type']
                 if n_type == 'RA' or n_type == 'MA':
+                    i_node_pres = list(graph.predecessors(n))
+                    for node in i_node_pres:
+                        node_type = graph.nodes[node]['type']
+                        if node_type == 'I':
+                            speaker_2 = centra.get_i_node_speaker(node,i_nodes_speak)
+                            if speaker != speaker_2:
+                                count = count + 1
+            i_count_tup = (count, text)
+            i_count.append(i_count_tup)
+        return i_count
+
+    @staticmethod
+    def get_ca_ma_speaker_count(graph, i_nodes_speak, centra):
+        i_count = []
+        for i_node in i_nodes_speak:
+            ID = i_node[0]
+            text = i_node[1]
+            speaker = i_node[2]
+            count = 0
+            node_pres = list(graph.predecessors(ID))
+            for n in node_pres:
+                n_type = graph.nodes[n]['type']
+                if n_type == 'CA' or n_type == 'MA':
                     i_node_pres = list(graph.predecessors(n))
                     for node in i_node_pres:
                         node_type = graph.nodes[node]['type']
