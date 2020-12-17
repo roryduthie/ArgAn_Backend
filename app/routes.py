@@ -118,7 +118,7 @@ def get_graph_jsn(text, is_map):
     centra = Centrality()
     graph = ''
     if not file_found:
-        print("File Not in Cache")
+
         node_path = centra.create_json_url(text, is_map)
         graph, jsn = centra.get_graph_url(node_path)
         save_to_cache(text, jsn)
@@ -127,7 +127,7 @@ def get_graph_jsn(text, is_map):
             nodesets = load_nodesets_for_corpus(text)
             save_nodesets_to_cache(text, nodesets)
     else:
-        print("File in Cache")
+
         graph = centra.get_graph_string(jsn)
     if not is_map:
         graph = centra.remove_an_nodes(graph)
@@ -456,5 +456,40 @@ def appeal_raw(ids):
         mimetype='application/json'
     )
     return response
+def get_node_divisiveness(ra_list,ca_list):
+    ra_count = len(ra_list)
+    div_scores = []
+    for ca_tup in ca_list:
+        ca_id = ca_tup[0]
+        ra_ca_count = len(ca_tup[1])
 
+        temp_div = ra_count + ra_ca_count
+        div_scores.append(temp_div)
+    return div_scores
+def get_divisiveness(graph, centra, i_nodes):
+    node_div = []
+    for i in i_nodes:
+        node_id = i[0]
+        text = i[1]
+        ra_list, ca_list, ca_ra_list = centra.get_i_ca_nodes(graph, centra, node_id)
+        div_list = get_node_divisiveness(ra_list, ca_ra_list)
+        div = sum(div_list)
+        i_node_div_tup = (node_id, text, div)
+        node_div.append(i_node_div_tup)
+    return node_div
 
+@app.route('/divisiveness-raw/<ids>', methods=["GET"])
+def divisiveness_raw(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    i_nodes = centra.get_i_node_list(graph)
+    divisiveness_list = get_divisiveness(graph, centra, i_nodes)
+
+    response = app.response_class(
+        response=json.dumps(divisiveness_list),
+        status=200,
+        mimetype='application/json'
+    )
+    return response

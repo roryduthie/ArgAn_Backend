@@ -422,3 +422,43 @@ class Centrality:
             i_count_tup = (count, text)
             i_count.append(i_count_tup)
         return i_count
+
+    @staticmethod
+    def get_ca_i_nodes(graph, ca_list):
+        ca_ra_list = []
+        for ca in ca_list:
+            node_succ = list(graph.predecessors(ca))
+            ra_list = []
+            for n in node_succ:
+                node_succ_2 = list(graph.predecessors(n))
+                for node in node_succ_2:
+                    n_type = graph.nodes[node]['type']
+                    if n_type == 'RA':
+                        ra_list.append(n)
+            ca_ra_tup = (ca, ra_list)
+            ca_ra_list.append(ca_ra_tup)
+        return ca_ra_list
+
+    @staticmethod
+    def get_i_ca_nodes(graph, centra, i_node_id):
+
+        ca_list = []
+        ra_list = []
+        ca_ra_list = []
+        node_pred = list(graph.predecessors(i_node_id))
+        node_succ = list(graph.successors(i_node_id))
+
+        for n in node_pred:
+            n_type = graph.nodes[n]['type']
+            if n_type == 'RA':
+                ra_list.append(n)
+            if n_type == 'CA':
+                ca_list.append(n)
+        for n in node_succ:
+            n_type = graph.nodes[n]['type']
+            if n_type == 'CA':
+                ca_list.append(n)
+        if len(ca_list) > 0:
+            ca_ra_list = centra.get_ca_i_nodes(graph, ca_list)
+
+        return ra_list, ca_list, ca_ra_list
