@@ -46,15 +46,97 @@ def is_map(text):
 
     return arg_map
 
+def load_nodesets_for_corpus(corpus_name):
+    directory = 'http://corpora.aifdb.org/' + corpus_name + '/nodesets'
+    with urlopen(directory) as url:
+        data = json.load(url)
+    return data
+
+def load_from_cache(aifdb_id):
+    directory = './cache/'
+    filename = str(aifdb_id) + '.json'
+    full_file_name = directory + filename
+    data = ''
+    file_found = False
+    try:
+        with open(full_file_name) as json_file:
+            data = json.load(json_file)
+        file_found = True
+    except:
+        file_found = False
+    return file_found, data
+
+def save_to_cache(aifdb_id, jsn_data):
+    directory = './cache/'
+    filename = str(aifdb_id) + '.json'
+    full_file_name = directory + filename
+
+    with open(full_file_name,"w") as fo:
+        json.dump(jsn_data, fo)
+
+def load_nodesets_from_cache(aifdb_id):
+    directory = './cache/'
+    filename = str(aifdb_id) + '_nodesets.json'
+    full_file_name = directory + filename
+    data = ''
+    file_found = False
+    try:
+        with open(full_file_name) as json_file:
+            data = json.load(json_file)
+        file_found = True
+    except:
+        file_found = False
+    return file_found, data
+
+def save_nodesets_to_cache(aifdb_id, jsn_data):
+    directory = './cache/'
+    filename = str(aifdb_id) + '_nodesets.json'
+    full_file_name = directory + filename
+
+    with open(full_file_name,"w") as fo:
+        json.dump(jsn_data, fo)
+
 def get_graph_jsn(text, is_map):
 
+    file_found = False
+    jsn = ''
+    if not is_map:
+        nodeset_file_found,nodeset_list = load_nodesets_from_cache(text)
+        if nodeset_file_found:
+            nodesets = load_nodesets_for_corpus(text)
+            if nodeset_list == nodesets:
+                file_found, jsn = load_from_cache(text)
+            else:
+                file_found = False
+        else:
+            file_found = False
+    else:
+        file_found, jsn = load_from_cache(text)
+
+
+
     centra = Centrality()
-    node_path = centra.create_json_url(text, is_map)
-    graph, jsn = centra.get_graph_url(node_path)
-    graph = centra.remove_an_nodes(graph)
-    graph = centra.remove_iso_nodes(graph)
+    graph = ''
+    if not file_found:
+        print("File Not in Cache")
+        node_path = centra.create_json_url(text, is_map)
+        graph, jsn = centra.get_graph_url(node_path)
+        save_to_cache(text, jsn)
+
+        if not is_map:
+            nodesets = load_nodesets_for_corpus(text)
+            save_nodesets_to_cache(text, nodesets)
+    else:
+        print("File in Cache")
+        graph = centra.get_graph_string(jsn)
+    if not is_map:
+        graph = centra.remove_an_nodes(graph)
+        graph = centra.remove_iso_nodes(graph)
 
     return graph, jsn
+
+
+
 
 def get_eigen_cent(graph):
 
