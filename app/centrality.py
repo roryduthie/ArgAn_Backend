@@ -177,6 +177,11 @@ class Centrality:
         return i_nodes
 
     @staticmethod
+    def get_ya_nodes_list(graph):
+        ya_nodes =  [x for x,y in graph.nodes(data=True) if y['type']=='YA']
+        return ya_nodes
+
+    @staticmethod
     def get_divergent_nodes(graph):
         list_of_nodes = []
 
@@ -399,6 +404,8 @@ class Centrality:
                     if l_id == lnode_id:
                         ltext = tups[1]
                         return l_id, ltext
+
+        return None, ''
     @staticmethod
     def get_i_node_speaker_list(i_nodes, l_nodes, l_node_i_node_list,centra):
         new_i_nodes = []
@@ -540,3 +547,155 @@ class Centrality:
                 ta_list.append(ca_tup)
 
         return ta_list
+
+    @staticmethod
+    def get_agreement_for_speaker(graph, l_nodes):
+        i_count = []
+        for l_node in l_nodes:
+            ID = l_node[0]
+            text = l_node[1]
+            speaker = text.split(':')[0]
+
+            node_tas = list(graph.predecessors(ID))
+            for n in node_tas:
+                n_type = graph.nodes[n]['type']
+                n_text = graph.nodes[n]['text']
+                if n_type == 'TA':
+
+                    yas = list(graph.successors(n))
+                    for node in yas:
+                        node_type = graph.nodes[node]['type']
+                        node_text = graph.nodes[node]['text']
+                        if node_type == 'YA' and node_text == 'Agreeing':
+                            i_count_tup = (speaker,1)
+                            i_count.append(i_count_tup)
+
+        return i_count
+
+    @staticmethod
+    def get_l_node_speaker(graph, l_nodes):
+        l_node_speak = []
+        for l_node in l_nodes:
+            text = l_node[1]
+            speaker = text.split(':')[0]
+            l_node_speak.append((text, speaker))
+        return l_node_speak
+
+    @staticmethod
+    def get_agreement_speaker_pair_count(graph, i_nodes_speak):
+        i_count = []
+        agree_count = 0
+        for i_node in i_nodes_speak:
+            ID = i_node[0]
+            text = i_node[1]
+            speaker = i_node[2]
+            count = 0
+
+            node_pres = list(graph.predecessors(ID))
+            for n in node_pres:
+                n_type = graph.nodes[n]['type']
+                n_text = graph.nodes[n]['text']
+                if n_type == 'YA' and n_text == 'Agreeing':
+
+                    agree_count = agree_count + 1
+                    ta_node_pres = list(graph.predecessors(n))
+                    for node in ta_node_pres:
+                        t = graph.nodes[node]['type']
+                        if t == 'TA':
+                            i_node_pres = list(graph.successors(node))
+                    #print(i_node_pres)
+                            for node_i in i_node_pres:
+                                node_type = graph.nodes[node_i]['type']
+                                node_text = graph.nodes[node_i]['text']
+
+                                if node_type == 'L':
+                                    speaker_2 = node_text.split(':')[0]
+                                    if speaker != speaker_2:
+                                        i_count_tup = (speaker, speaker_2, 1)
+                                        i_count.append(i_count_tup)
+
+        return i_count
+
+    @staticmethod
+    def get_interactions(graph, l_nodes):
+        i_count = []
+        agree_count = 0
+        for l_node in l_nodes:
+            ID = l_node[0]
+            text = l_node[1]
+            speaker = text.split(':')[0]
+
+            node_tas = list(graph.successors(ID))
+            for n in node_tas:
+                n_type = graph.nodes[n]['type']
+                n_text = graph.nodes[n]['text']
+                if n_type == 'TA':
+
+                    ls = list(graph.successors(n))
+                    for node in ls:
+                        node_type = graph.nodes[node]['type']
+                        node_text = graph.nodes[node]['text']
+                        if node_type == 'L':
+                            speaker_2 = node_text.split(':')[0]
+                            if speaker != speaker_2:
+                                i_count_tup = (speaker, speaker_2, 1)
+                                i_count.append(i_count_tup)
+
+        return i_count
+
+    @staticmethod
+    def get_responsiveness(graph, yas):
+        speaker_questions = []
+        for ya in yas:
+            text = graph.nodes[ya]['text']
+
+            if text == 'Pure Questioning':
+                l_node_pred = list(graph.predecessors(ya))
+
+
+            #GET L-node pair for the question
+                for l_node in l_node_pred:
+                    n_type = graph.nodes[l_node]['type']
+
+                    if n_type == 'L':
+                        node_succ = list(graph.successors(l_node))
+
+                        for ta_node in node_succ:
+                            ta_type = graph.nodes[ta_node]['type']
+                            if ta_type == 'TA':
+                                node_ta_succ = list(graph.successors(ta_node))
+                                answer_count = 0
+                                speaker = ''
+                                speaker_flag = False
+                                for l_ta_node in node_ta_succ:
+                                    l_ta_type = graph.nodes[l_ta_node]['type']
+                                    l_ta_text = graph.nodes[l_ta_node]['text']
+                                    if l_ta_type == 'L':
+                                        speaker = l_ta_text.split(':')[0]
+                                        speaker_flag = True
+                                    if l_ta_type == 'YA' and l_ta_text == 'Default Illocuting':
+                                        answer_count = answer_count + 1
+                                if speaker_flag:
+                                    speaker_questions.append((speaker, 1, answer_count))
+                                    speaker_flag = False
+
+        return speaker_questions
+
+    @staticmethod
+    def get_speaker_ca_nodes(graph, i_nodes_speak):
+        i_count = []
+        for i_node in i_nodes_speak:
+            ID = i_node[0]
+            text = i_node[1]
+            speaker = i_node[2]
+
+
+            node_succ = list(graph.successors(ID))
+
+            for n in node_succ:
+                n_type = graph.nodes[n]['type']
+                if n_type == 'CA':
+                    i_count_tup = (speaker, 1)
+                    i_count.append(i_count_tup)
+
+        return i_count

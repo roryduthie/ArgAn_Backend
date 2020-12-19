@@ -1,6 +1,7 @@
 from flask import render_template, request, redirect, session, Markup, send_file
 from . import app
 import pandas as pd
+import numpy as np
 from urllib.request import urlopen
 from app.centrality import Centrality
 import requests
@@ -1133,4 +1134,248 @@ def divisiveness_cloud_vis(ids):
         mimetype='application/json'
     )
     return response
+
+def get_sycophancy(graph, centra, l_nodes, l_node_speakers):
+    speaker_agreements = centra.get_agreement_for_speaker(graph, l_nodes)
+    df_agreements = pd.DataFrame(speaker_agreements, columns=['speaker', 'agreement'])
+    df_locs = pd.DataFrame(l_node_speakers, columns=['text', 'speaker'])
+    locs = df_locs['speaker'].str.strip().value_counts().to_frame().reset_index()
+    locs.columns = ['speaker', 'count']
+    agrees = df_agreements.groupby(['speaker'])['agreement'].agg('sum').to_frame().reset_index()
+    agrees['speaker'] = agrees['speaker'].str.strip()
+
+    new_df = agrees.merge(locs, how='left', on = ['speaker'])
+
+    new_df['sycophancy'] = new_df['agreement'] / new_df['count']
+    return new_df
+
+
+
+
+
+@app.route('/sycophancy-raw/<ids>', methods=["GET"])
+def sycophancy_raw(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    l_nodes = centra.get_l_node_list(graph)
+    l_node_speakers = centra.get_l_node_speaker(graph, l_nodes)
+
+    syc_df = get_sycophancy(graph, centra, l_nodes, l_node_speakers)
+    if syc_df.empty:
+        response = app.response_class(
+            response=json.dumps('No Agreements'),
+            status=200,
+            mimetype='application/json'
+        )
+        return response
+    syc_df_sel = syc_df[['speaker', 'sycophancy']]
+
+
+    data_dict = syc_df_sel.to_dict(orient='records')
+
+    response = app.response_class(
+        response=json.dumps(data_dict),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+def get_idolatry(agreement_pairs, interaction_pairs):
+
+
+
+    df_agreement_pairs = pd.DataFrame(agreement_pairs, columns=['speaker1','speaker2', 'agreement'])
+    df_interactions = pd.DataFrame(interaction_pairs, columns=['speaker1', 'speaker2', 'interaction'])
+
+    df_agreement_pairs[['speaker1', 'speaker2']] = np.sort(df_agreement_pairs[['speaker1', 'speaker2']], axis=1)
+    df_interactions[['speaker1', 'speaker2']] = np.sort(df_interactions[['speaker1', 'speaker2']], axis=1)
+
+    agrees = df_agreement_pairs.groupby(['speaker1','speaker2'])['agreement'].agg('sum').to_frame().reset_index()
+    inters = df_interactions.groupby(['speaker1','speaker2'])['interaction'].agg('sum').to_frame().reset_index()
+
+    new_df = agrees.merge(inters, how='left', on = ['speaker1', 'speaker2'])
+    new_df['interaction'] = new_df['interaction'].fillna(1)
+
+    new_df['idolatry'] = new_df['agreement'] / new_df['interaction']
+    return new_df
+
+
+
+
+
+@app.route('/idolatry-raw/<ids>', methods=["GET"])
+def idolatry_raw(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    l_node_i_node_list = centra.get_loc_prop_pair(graph)
+    i_nodes = centra.get_i_node_list(graph)
+    l_nodes = centra.get_l_node_list(graph)
+
+    new_i_nodes = centra.get_i_node_speaker_list(i_nodes, l_nodes, l_node_i_node_list,centra)
+
+    agreement_pairs = centra.get_agreement_speaker_pair_count(graph, new_i_nodes)
+    interaction_pairs = centra.get_interactions(graph, l_nodes)
+
+
+
+    idol_df = get_idolatry(agreement_pairs, interaction_pairs)
+    if idol_df.empty:
+        response = app.response_class(
+            response=json.dumps('No Agreements'),
+            status=200,
+            mimetype='application/json'
+        )
+        return response
+    idol_df_sel = idol_df[['speaker1','speaker2', 'idolatry']]
+
+
+    data_dict = idol_df_sel.to_dict(orient='records')
+
+    response = app.response_class(
+        response=json.dumps(data_dict),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+
+
+
+
+@app.route('/interactions-raw/<ids>', methods=["GET"])
+def interaction_raw(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+
+    l_nodes = centra.get_l_node_list(graph)
+
+
+    interaction_pairs = centra.get_interactions(graph, l_nodes)
+    df_interactions = pd.DataFrame(interaction_pairs, columns=['speaker1', 'speaker2', 'interaction'])
+    df_interactions[['speaker1', 'speaker2']] = np.sort(df_interactions[['speaker1', 'speaker2']], axis=1)
+    inters = df_interactions.groupby(['speaker1','speaker2'])['interaction'].agg('sum').to_frame().reset_index()
+
+
+
+    if inters.empty:
+        response = app.response_class(
+            response=json.dumps('No Interactions'),
+            status=200,
+            mimetype='application/json'
+        )
+        return response
+    inters_df_sel = inters[['speaker1','speaker2', 'interaction']]
+
+
+    data_dict = inters_df_sel.to_dict(orient='records')
+
+    response = app.response_class(
+        response=json.dumps(data_dict),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@app.route('/responsiveness-raw/<ids>', methods=["GET"])
+def responsiveness_raw(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+
+    yas = centra.get_ya_nodes_list(graph)
+
+
+    responses_list = centra.get_responsiveness(graph, yas)
+    df_resps = pd.DataFrame(responses_list, columns=['speaker', 'questions', 'answers'])
+    resps = df_resps.groupby(['speaker']).agg({'questions':'sum','answers':'sum'}).reset_index()
+    resps['responsiveness'] = resps['answers'] / resps['questions']
+
+
+    if resps.empty:
+        response = app.response_class(
+            response=json.dumps('No Questions'),
+            status=200,
+            mimetype='application/json'
+        )
+        return response
+    resps_df_sel = resps[['speaker','responsiveness']]
+
+
+    data_dict = resps_df_sel.to_dict(orient='records')
+
+    response = app.response_class(
+        response=json.dumps(data_dict),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+
+
+def get_belligerence(graph, centra, l_nodes, l_node_speakers, i_node_speakers):
+
+    speaker_cas = centra.get_speaker_ca_nodes(graph, i_node_speakers)
+    df_cas = pd.DataFrame(speaker_cas, columns=['speaker', 'conflict'])
+    df_locs = pd.DataFrame(l_node_speakers, columns=['text', 'speaker'])
+    locs = df_locs['speaker'].str.strip().value_counts().to_frame().reset_index()
+    locs.columns = ['speaker', 'count']
+    cas = df_cas.groupby(['speaker'])['conflict'].agg('sum').to_frame().reset_index()
+    cas['speaker'] = cas['speaker'].str.strip()
+
+    new_df = cas.merge(locs, how='left', on = ['speaker'])
+
+    new_df['belligerence'] = new_df['conflict'] / new_df['count']
+    return new_df
+
+
+
+
+
+@app.route('/belligerence-raw/<ids>', methods=["GET"])
+def belligerence_raw(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+
+
+    l_node_i_node_list = centra.get_loc_prop_pair(graph)
+    i_nodes = centra.get_i_node_list(graph)
+    l_nodes = centra.get_l_node_list(graph)
+
+    l_node_speakers = centra.get_l_node_speaker(graph, l_nodes)
+    new_i_nodes = centra.get_i_node_speaker_list(i_nodes, l_nodes, l_node_i_node_list,centra)
+
+    bell_df = get_belligerence(graph, centra, l_nodes, l_node_speakers, new_i_nodes)
+    if bell_df.empty:
+        response = app.response_class(
+            response=json.dumps('No Conflict'),
+            status=200,
+            mimetype='application/json'
+        )
+        return response
+    bell_df_sel = bell_df[['speaker', 'belligerence']]
+
+
+    data_dict = bell_df_sel.to_dict(orient='records')
+
+    response = app.response_class(
+        response=json.dumps(data_dict),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
 
