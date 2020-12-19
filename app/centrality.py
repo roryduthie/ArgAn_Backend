@@ -505,3 +505,38 @@ class Centrality:
             ca_ra_list = centra.get_ca_i_nodes(graph, ca_list)
 
         return ra_list, ca_list, ca_ra_list
+
+    @staticmethod
+    def get_l_ta_s_nodes(graph, l_nodes):
+        ta_list = []
+        ra_count = 0
+        ca_count = 0
+        ma_count = 0
+        ta_count = 0
+
+        for lnode in l_nodes:
+            l = lnode[0]
+            node_succ = list(graph.successors(l))
+            for n in node_succ:
+                n_type = graph.nodes[n]['type']
+                if n_type == 'TA':
+                    ta_count = ta_count +1
+                    node_pred = list(graph.successors(n))
+                    for node in node_pred:
+                        node_type = graph.nodes[node]['type']
+                        node_text = graph.nodes[node]['text']
+
+                        if node_type == 'YA' and node_text == 'Arguing':
+                            ra_count = ra_count +1
+                        if node_type == 'YA' and node_text == 'Restating':
+                            ma_count = ma_count +1
+                        if node_type == 'YA' and node_text == 'Disagreeing':
+                            ca_count = ca_count +1
+                ra_tup = (ta_count, "RA", ra_count)
+                ma_tup = (ta_count, "MA", ma_count)
+                ca_tup = (ta_count, "CA", ca_count)
+                ta_list.append(ra_tup)
+                ta_list.append(ma_tup)
+                ta_list.append(ca_tup)
+
+        return ta_list

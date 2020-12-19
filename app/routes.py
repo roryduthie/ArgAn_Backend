@@ -11,6 +11,7 @@ import os
 import uuid
 import plotly.express as px
 import plotly
+import plotly.graph_objects as go
 from wordcloud import WordCloud, STOPWORDS
 from io import BytesIO
 import base64
@@ -184,16 +185,7 @@ def eigen_cent_vis_view(ids):
 
     df_sel = df.head(10)
 
-    fig = px.bar(df_sel, x="text", y="cent", title="Eigenvector Centrality")
-    fig.update_layout(
-    autosize=False,
-    width=500,
-    height=500,
-    xaxis=dict(
-        showticklabels=False
-        )
-    )
-    dv = plotly.io.to_html(fig, include_plotlyjs=False, full_html=False)
+    dv = make_bar_chart(df_sel, "text", "cent", "Eigenvector Centrality", None, None)
     return render_template('display_graph.html',
                                div_placeholder=Markup(dv)
                               )
@@ -211,22 +203,66 @@ def eigen_cent_vis(ids):
 
     df_sel = df.head(10)
 
-    fig = px.bar(df_sel, x="text", y="cent", title="Long-Form Input")
-    fig.update_layout(
-    autosize=False,
-    width=500,
-    height=500,
-    xaxis=dict(
-        showticklabels=False
-        )
-    )
-    dv = plotly.io.to_html(fig, include_plotlyjs=False, full_html=False)
+    dv = make_bar_chart(df_sel, "text", "cent", "Eigenvector Centrality", 500, 500)
+
+
     response = app.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
     )
     return response
+
+def make_bar_chart(dataframe, x_axis, y_axis, title, width, height):
+    fig = px.bar(dataframe, x=x_axis, y=y_axis, title=title)
+    fig.update_layout(
+    autosize=True,
+    width=width,
+    height=height,
+    xaxis=dict(
+        showticklabels=False
+        ),
+    yaxis=dict(automargin=True)
+    )
+    dv = plotly.io.to_html(fig, include_plotlyjs=False, full_html=False)
+
+    return dv
+
+def make_gauge_chart(value, title, min_value, max_value):
+
+    fig = go.Figure(go.Indicator(
+        mode = "gauge+number",
+        value = value,
+        domain = {'x': [0, 1], 'y': [0, 1]},
+        title = {'text': title},
+        gauge = {'axis': {'range': [min_value, max_value]}}))
+
+    dv = plotly.io.to_html(fig, include_plotlyjs=False, full_html=False)
+    return dv
+
+def make_line_chart(dataframe, x, y, colour, line_group, hover_name, width, height):
+
+    fig = px.line(dataframe, x=x, y=y, color=colour,
+              line_group=line_group, hover_name=hover_name)
+    fig.update_layout(
+    autosize=True,
+    width=width,
+    height=height
+    )
+
+    dv = plotly.io.to_html(fig, include_plotlyjs=False, full_html=False)
+    return dv
+
+def make_sunburst_chart(dataframe, path, values, title,width, height):
+
+    fig = px.sunburst(dataframe,
+                  path=path,
+                  values=values,
+                  title=title,
+                  width=width, height=height)
+
+    dv = plotly.io.to_html(fig, include_plotlyjs=False, full_html=False)
+    return dv
 
 @app.route('/eigen-cent-cloud-vis-view/<ids>', methods=["GET"])
 def eigen_cent_cloud_vis_view(ids):
@@ -241,36 +277,10 @@ def eigen_cent_cloud_vis_view(ids):
     df_sel = df.head(20)
 
 
-    comment_words = ''
-    stopwords = set(STOPWORDS)
-
-    for val in df_sel['text']:
-        val = str(val)
-        tokens = val.split()
-
-        for i in range(len(tokens)):
-            tokens[i] = tokens[i].lower()
-
-        comment_words += " ".join(tokens)+" "
-
-    wordcloud = WordCloud(width = 200, height = 200,
-                background_color ='white',
-                stopwords = stopwords,
-                min_font_size = 10).generate(comment_words)
+    plot_data = make_word_cloud(df_sel, "text", 500, 500)
 
 
-    plt.figure(figsize = (2, 2), facecolor = None)
-    plt.imshow(wordcloud)
-    plt.axis("off")
-    plt.tight_layout(pad = 0)
-    img = BytesIO()
-    plt.savefig(img, format='png')
-    img.seek(0)
-    plt.close()
-    plot_url = base64.b64encode(img.getvalue()).decode('utf8')
-
-
-    return render_template('plot.html', plot_url=plot_url)
+    return render_template('plot.html', plot_url=plot_data)
 
 @app.route('/eigen-cent-cloud-vis/<ids>', methods=["GET"])
 def eigen_cent_cloud_vis(ids):
@@ -284,11 +294,21 @@ def eigen_cent_cloud_vis(ids):
     df = df.sort_values('cent', ascending=False)
     df_sel = df.head(20)
 
+    plot_data = make_word_cloud(df_sel, "text", 500, 500)
 
+
+    response = app.response_class(
+        response=json.dumps(plot_data),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+def make_word_cloud(dataframe, text_column, width, height):
     comment_words = ''
     stopwords = set(STOPWORDS)
 
-    for val in df_sel['text']:
+    for val in dataframe[text_column]:
         val = str(val)
         tokens = val.split()
 
@@ -297,13 +317,15 @@ def eigen_cent_cloud_vis(ids):
 
         comment_words += " ".join(tokens)+" "
 
-    wordcloud = WordCloud(width = 200, height = 200,
+    wordcloud = WordCloud(width = width, height = height,
                 background_color ='white',
                 stopwords = stopwords,
-                min_font_size = 10).generate(comment_words)
+                min_font_size = 8).generate(comment_words)
 
+    fig_x = width / 100
+    fig_y = height / 100
 
-    plt.figure(figsize = (2, 2), facecolor = None)
+    plt.figure(figsize = (fig_x, fig_y), facecolor = None)
     plt.imshow(wordcloud)
     plt.axis("off")
     plt.tight_layout(pad = 0)
@@ -311,16 +333,8 @@ def eigen_cent_cloud_vis(ids):
     plt.savefig(img, format='png')
     img.seek(0)
     plt.close()
-    plot_url = base64.b64encode(img.getvalue()).decode('utf8')
-
-
-
-    response = app.response_class(
-        response=json.dumps(plot_url),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    plot_data = base64.b64encode(img.getvalue()).decode('utf8')
+    return plot_data
 
 
 def get_cogency(graph, centra):
@@ -357,6 +371,37 @@ def cogency_raw(ids):
     )
     return response
 
+@app.route('/cogency-vis/<ids>', methods=["GET"])
+def cogency_vis(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    cogency = get_cogency(graph, centra)
+
+    dv = make_gauge_chart(cogency, 'Cogency', None, 1)
+
+    response = app.response_class(
+        response=dv,
+        status=200,
+        mimetype='application/html'
+    )
+    return response
+
+@app.route('/cogency-vis-view/<ids>', methods=["GET"])
+def cogency_vis_view(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    cogency = get_cogency(graph, centra)
+
+    dv = make_gauge_chart(cogency, 'Cogency', None, 1)
+
+    return render_template('display_graph.html',
+                               div_placeholder=Markup(dv)
+                              )
+
 def get_correctness(graph, centra):
 
     l_nodes = centra.get_l_node_list(graph)
@@ -379,6 +424,34 @@ def correctness_raw(ids):
     )
     return response
 
+
+@app.route('/correctness-vis/<ids>', methods=["GET"])
+def correctness_vis(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    correctness = get_correctness(graph, centra)
+    dv = make_gauge_chart(correctness, 'Correctness', None, 1)
+
+    response = app.response_class(
+        response=dv,
+        status=200,
+        mimetype='application/html'
+    )
+    return response
+@app.route('/correctness-vis-view/<ids>', methods=["GET"])
+def correctness_vis_view(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    correctness = get_correctness(graph, centra)
+    dv = make_gauge_chart(correctness, 'Correctness', None, 1)
+    return render_template('display_graph.html',
+                               div_placeholder=Markup(dv)
+                              )
+
 def get_coherence(graph, centra):
     graph = centra.remove_redundant_nodes(graph)
     isos = centra.get_isolated_nodes(graph)
@@ -400,6 +473,36 @@ def coherence_raw(ids):
     )
     return response
 
+@app.route('/coherence-vis/<ids>', methods=["GET"])
+def coherence_vis(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    coherence = get_coherence(graph, centra)
+
+    dv = make_gauge_chart(coherence, 'Coherence', None, 1)
+
+    response = app.response_class(
+        response=dv,
+        status=200,
+        mimetype='application/html'
+    )
+    return response
+@app.route('/coherence-vis-view/<ids>', methods=["GET"])
+def coherence_vis_view(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    coherence = get_coherence(graph, centra)
+
+    dv = make_gauge_chart(coherence, 'Coherence', None, 1)
+
+    return render_template('display_graph.html',
+                               div_placeholder=Markup(dv)
+                              )
+
 def get_popularity(graph, centra):
     i_nodes = centra.get_i_node_ids(graph)
     yas, i_node_tups = centra.get_i_ya_nodes(graph, i_nodes)
@@ -409,6 +512,67 @@ def get_unpopularity(graph, centra):
     i_nodes = centra.get_i_node_ids(graph)
     yas, i_node_tups = centra.get_i_ya_dis_nodes(graph, i_nodes)
     return i_node_tups
+
+
+@app.route('/unpopularity-raw/<ids>', methods=["GET"])
+def unpopularity_raw(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    popularity_list = get_unpopularity(graph, centra)
+
+    response = app.response_class(
+        response=json.dumps(popularity_list),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@app.route('/unpopularity-vis-view/<ids>', methods=["GET"])
+def unpopularity_vis_view(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    popularity_list = get_unpopularity(graph, centra)
+
+    df = pd.DataFrame(popularity_list, columns=['UnPopularity','Text'])
+    df = df.sort_values('UnPopularity', ascending=False)
+
+    df_sel = df.head(10)
+
+    dv = make_bar_chart(df_sel, "Text", "UnPopularity", "UnPopularity Top 10", 800, 500)
+    return render_template('display_graph.html',
+                               div_placeholder=Markup(dv)
+                              )
+
+@app.route('/unpopularity-vis/<ids>', methods=["GET"])
+def unpopularity_vis(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    popularity_list = get_unpopularity(graph, centra)
+
+    df = pd.DataFrame(popularity_list, columns=['UnPopularity','Text'])
+    df = df.sort_values('UnPopularity', ascending=False)
+
+    df_sel = df.head(10)
+
+    dv = make_bar_chart(df_sel, "Text", "UnPopularity", "UnPopularity Top 10", 800, 500)
+
+
+    response = app.response_class(
+        response=dv,
+        status=200,
+        mimetype='application/html'
+    )
+    return response
+
+
 
 @app.route('/popularity-raw/<ids>', methods=["GET"])
 def popularity_raw(ids):
@@ -422,6 +586,49 @@ def popularity_raw(ids):
         response=json.dumps(popularity_list),
         status=200,
         mimetype='application/json'
+    )
+    return response
+
+@app.route('/popularity-vis-view/<ids>', methods=["GET"])
+def popularity_vis_view(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    popularity_list = get_popularity(graph, centra)
+
+    df = pd.DataFrame(popularity_list, columns=['Popularity','Text'])
+    df = df.sort_values('Popularity', ascending=False)
+
+    df_sel = df.head(10)
+
+    dv = make_bar_chart(df_sel, "Text", "Popularity", "Popularity Top 10", 800, 500)
+    return render_template('display_graph.html',
+                               div_placeholder=Markup(dv)
+                              )
+
+@app.route('/popularity-vis/<ids>', methods=["GET"])
+def popularity_vis(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    popularity_list = get_popularity(graph, centra)
+
+    df = pd.DataFrame(popularity_list, columns=['Popularity','Text'])
+    df = df.sort_values('Popularity', ascending=False)
+
+    df_sel = df.head(10)
+
+    dv = make_bar_chart(df_sel, "Text", "Popularity", "Popularity Top 10", 800, 500)
+
+
+    response = app.response_class(
+        response=dv,
+        status=200,
+        mimetype='application/html'
     )
     return response
 
@@ -443,6 +650,51 @@ def get_appeal(graph, centra, popularity_list):
 
     appeal_list = merge_df.to_records().tolist()
     return appeal_list
+
+@app.route('/appeal-vis-view/<ids>', methods=["GET"])
+def appeal_vis_view(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    popularity_list = get_popularity(graph, centra)
+    appeal_list = get_appeal(graph, centra, popularity_list)
+
+    df = pd.DataFrame(appeal_list, columns=['Text', 'Appeal'])
+    df = df.sort_values('Appeal', ascending=False)
+
+    df_sel = df.head(10)
+
+    dv = make_bar_chart(df_sel, "Text", "Appeal", "Appeal Top 10", 800, 500)
+    return render_template('display_graph.html',
+                               div_placeholder=Markup(dv)
+                              )
+
+@app.route('/appeal-vis/<ids>', methods=["GET"])
+def appeal_vis(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    popularity_list = get_popularity(graph, centra)
+    appeal_list = get_appeal(graph, centra, popularity_list)
+
+    df = pd.DataFrame(appeal_list, columns=['Text', 'Appeal'])
+    df = df.sort_values('Appeal', ascending=False)
+
+    df_sel = df.head(10)
+
+    dv = make_bar_chart(df_sel, "Text", "Appeal", "Appeal Top 10", 800, 500)
+
+
+    response = app.response_class(
+        response=dv,
+        status=200,
+        mimetype='application/html'
+    )
+    return response
 
 def get_unappeal(graph, centra, popularity_list):
 
@@ -497,6 +749,51 @@ def unappeal_raw(ids):
     )
     return response
 
+@app.route('/unappeal-vis-view/<ids>', methods=["GET"])
+def unappeal_vis_view(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    popularity_list = get_unpopularity(graph, centra)
+    appeal_list = get_unappeal(graph, centra, popularity_list)
+
+    df = pd.DataFrame(appeal_list, columns=['Text', 'UnAppeal'])
+    df = df.sort_values('UnAppeal', ascending=False)
+
+    df_sel = df.head(10)
+
+    dv = make_bar_chart(df_sel, "Text", "UnAppeal", "UnAppeal Top 10", 500, 500)
+    return render_template('display_graph.html',
+                               div_placeholder=Markup(dv)
+                              )
+
+@app.route('/unappeal-vis/<ids>', methods=["GET"])
+def unappeal_vis(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    popularity_list = get_unpopularity(graph, centra)
+    appeal_list = get_unappeal(graph, centra, popularity_list)
+
+    df = pd.DataFrame(appeal_list, columns=['Text', 'UnAppeal'])
+    df = df.sort_values('UnAppeal', ascending=False)
+
+    df_sel = df.head(10)
+
+    dv = make_bar_chart(df_sel, "Text", "UnAppeal", "UnAppeal Top 10", 500, 500)
+
+
+    response = app.response_class(
+        response=dv,
+        status=200,
+        mimetype='application/html'
+    )
+    return response
+
 def get_node_divisiveness(ra_list,ca_list):
     ra_count = len(ra_list)
     div_scores = []
@@ -535,6 +832,108 @@ def divisiveness_raw(ids):
     )
     return response
 
+@app.route('/divisiveness-vis-view/<ids>', methods=["GET"])
+def divisiveness_vis_view(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    i_nodes = centra.get_i_node_list(graph)
+    divisiveness_list = get_divisiveness(graph, centra, i_nodes)
+
+    df = pd.DataFrame(divisiveness_list, columns=['ID','Text', 'Divisiveness'])
+    df = df.sort_values('Divisiveness', ascending=False)
+
+    df_sel = df.head(10)
+
+    dv = make_bar_chart(df_sel, "Text", "Divisiveness", "Divisiveness Top 10", None, None)
+    return render_template('display_graph.html',
+                               div_placeholder=Markup(dv)
+                              )
+
+@app.route('/divisiveness-vis/<ids>', methods=["GET"])
+def divisiveness_vis(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    i_nodes = centra.get_i_node_list(graph)
+    divisiveness_list = get_divisiveness(graph, centra, i_nodes)
+
+    df = pd.DataFrame(divisiveness_list, columns=['ID','Text', 'Divisiveness'])
+    df = df.sort_values('Divisiveness', ascending=False)
+
+    df_sel = df.head(10)
+
+    dv = make_bar_chart(df_sel, "Text", "Divisiveness", "Divisiveness Top 10", None, None)
+
+
+    response = app.response_class(
+        response=dv,
+        status=200,
+        mimetype='application/html'
+    )
+    return response
+
+@app.route('/s-node-timeline-raw/<ids>', methods=["GET"])
+def s_node_timeline_raw(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    l_nodes = centra.get_l_node_list(graph)
+    ta_timeline = centra.get_l_ta_s_nodes(graph, l_nodes)
+
+    df = pd.DataFrame(ta_timeline, columns =['TA Count', 'Node Type', 'Node Count'])
+
+    timeline_list = df.to_dict(orient='records')
+
+    response = app.response_class(
+        response=json.dumps(timeline_list),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@app.route('/s-node-timeline-vis/<ids>', methods=["GET"])
+def s_node_timeline_vis(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    l_nodes = centra.get_l_node_list(graph)
+    ta_timeline = centra.get_l_ta_s_nodes(graph, l_nodes)
+
+    df = pd.DataFrame(ta_timeline, columns =['TA Count', 'Node Type', 'Node Count'])
+
+    dv = make_line_chart(df, 'TA Count', 'Node Count', 'Node Type', 'Node Type', 'Node Type', 600, 600)
+
+    response = app.response_class(
+        response=dv,
+        status=200,
+        mimetype='application/html'
+    )
+    return response
+
+@app.route('/s-node-timeline-vis-view/<ids>', methods=["GET"])
+def s_node_timeline_vis_view(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    l_nodes = centra.get_l_node_list(graph)
+    ta_timeline = centra.get_l_ta_s_nodes(graph, l_nodes)
+
+    df = pd.DataFrame(ta_timeline, columns =['TA Count', 'Node Type', 'Node Count'])
+
+    dv = make_line_chart(df, 'TA Count', 'Node Count', 'Node Type', 'Node Type', 'Node Type', 600, 300)
+
+    return render_template('display_graph.html',
+                               div_placeholder=Markup(dv)
+                              )
+
 @app.route('/statistics-raw/<ids>', methods=["GET"])
 def statistics_raw(ids):
     arg_map = is_map(ids)
@@ -554,23 +953,27 @@ def statistics_raw(ids):
 
     ras = RA_nodes['text'].value_counts().to_frame().reset_index()
     ras.columns = ['text', 'count']
+    ras['type']='RA'
 
     cas = CA_nodes['text'].value_counts().to_frame().reset_index()
     cas.columns = ['text', 'count']
+    cas['type']='CA'
 
     mas = MA_nodes['text'].value_counts().to_frame().reset_index()
     mas.columns = ['text', 'count']
+    mas['type']='MA'
 
     yas = YA_nodes['text'].value_counts().to_frame().reset_index()
     yas.columns = ['text', 'count']
+    yas['type']='YA'
 
     overall_df = pd.concat([ras, cas, mas, yas], ignore_index=True)
 
     l_node_count = len(l_nodes)
     i_node_count = len(i_nodes)
 
-    new_loc_row = {'text':'Locutions', 'count':l_node_count}
-    new_prop_row = {'text':'Propositions', 'count':i_node_count}
+    new_loc_row = {'text':'Locutions', 'count':l_node_count, 'type':'Locution'}
+    new_prop_row = {'text':'Propositions', 'count':i_node_count, 'type':'I-node'}
 
     overall_df = overall_df.append(new_loc_row, ignore_index=True)
     overall_df = overall_df.append(new_prop_row, ignore_index=True)
@@ -583,3 +986,151 @@ def statistics_raw(ids):
         mimetype='application/json'
     )
     return response
+
+@app.route('/statistics-vis-view/<ids>', methods=["GET"])
+def statistics_vis_view(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    i_nodes = centra.get_i_node_list(graph)
+    l_nodes = centra.get_l_node_list(graph)
+
+    data = jsn['nodes']
+    df_nodes = pd.DataFrame.from_dict(data, orient='columns')
+
+    RA_nodes = df_nodes[df_nodes['type']=='RA']
+    CA_nodes = df_nodes[df_nodes['type']=='CA']
+    MA_nodes = df_nodes[df_nodes['type']=='MA']
+    YA_nodes = df_nodes[df_nodes['type']=='YA']
+
+    ras = RA_nodes['text'].value_counts().to_frame().reset_index()
+    ras.columns = ['text', 'count']
+    ras['type']='RA'
+
+    cas = CA_nodes['text'].value_counts().to_frame().reset_index()
+    cas.columns = ['text', 'count']
+    cas['type']='CA'
+
+    mas = MA_nodes['text'].value_counts().to_frame().reset_index()
+    mas.columns = ['text', 'count']
+    mas['type']='MA'
+
+    yas = YA_nodes['text'].value_counts().to_frame().reset_index()
+    yas.columns = ['text', 'count']
+    yas['type']='YA'
+
+    overall_df = pd.concat([ras, cas, mas, yas], ignore_index=True)
+
+    l_node_count = len(l_nodes)
+    i_node_count = len(i_nodes)
+
+    new_loc_row = {'text':'Locutions', 'count':l_node_count, 'type':'Locution'}
+    new_prop_row = {'text':'Propositions', 'count':i_node_count, 'type':'I-node'}
+
+    overall_df = overall_df.append(new_loc_row, ignore_index=True)
+    overall_df = overall_df.append(new_prop_row, ignore_index=True)
+
+    dv = make_sunburst_chart(overall_df, ['type', 'text'], 'count', 'Overall Statistics' ,500, 500)
+
+    return render_template('display_graph.html',
+                               div_placeholder=Markup(dv)
+                              )
+
+@app.route('/statistics-vis/<ids>', methods=["GET"])
+def statistics_vis(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    i_nodes = centra.get_i_node_list(graph)
+    l_nodes = centra.get_l_node_list(graph)
+
+    data = jsn['nodes']
+    df_nodes = pd.DataFrame.from_dict(data, orient='columns')
+
+    RA_nodes = df_nodes[df_nodes['type']=='RA']
+    CA_nodes = df_nodes[df_nodes['type']=='CA']
+    MA_nodes = df_nodes[df_nodes['type']=='MA']
+    YA_nodes = df_nodes[df_nodes['type']=='YA']
+
+    ras = RA_nodes['text'].value_counts().to_frame().reset_index()
+    ras.columns = ['text', 'count']
+    ras['type']='RA'
+
+    cas = CA_nodes['text'].value_counts().to_frame().reset_index()
+    cas.columns = ['text', 'count']
+    cas['type']='CA'
+
+    mas = MA_nodes['text'].value_counts().to_frame().reset_index()
+    mas.columns = ['text', 'count']
+    mas['type']='MA'
+
+    yas = YA_nodes['text'].value_counts().to_frame().reset_index()
+    yas.columns = ['text', 'count']
+    yas['type']='YA'
+
+    overall_df = pd.concat([ras, cas, mas, yas], ignore_index=True)
+
+    l_node_count = len(l_nodes)
+    i_node_count = len(i_nodes)
+
+    new_loc_row = {'text':'Locutions', 'count':l_node_count, 'type':'Locution'}
+    new_prop_row = {'text':'Propositions', 'count':i_node_count, 'type':'I-node'}
+
+    overall_df = overall_df.append(new_loc_row, ignore_index=True)
+    overall_df = overall_df.append(new_prop_row, ignore_index=True)
+
+    dv = make_sunburst_chart(overall_df, ['type', 'text'], 'count', 'Overall Statistics' ,500, 500)
+
+    response = app.response_class(
+        response=dv,
+        status=200,
+        mimetype='application/html'
+    )
+    return response
+
+@app.route('/divisiveness-cloud-vis-view/<ids>', methods=["GET"])
+def divisiveness_cloud_vis_view(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+    i_nodes = centra.get_i_node_list(graph)
+    divisiveness_list = get_divisiveness(graph, centra, i_nodes)
+
+    df = pd.DataFrame(divisiveness_list, columns=['ID','Text', 'Divisiveness'])
+    df = df.sort_values('Divisiveness', ascending=False)
+
+    df_sel = df.head(10)
+
+
+    plot_data = make_word_cloud(df_sel, "Text", 500, 500)
+
+
+    return render_template('plot.html', plot_url=plot_data)
+
+@app.route('/divisiveness-cloud-vis/<ids>', methods=["GET"])
+def divisiveness_cloud_vis(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+    i_nodes = centra.get_i_node_list(graph)
+    divisiveness_list = get_divisiveness(graph, centra, i_nodes)
+
+    df = pd.DataFrame(divisiveness_list, columns=['ID','Text', 'Divisiveness'])
+    df = df.sort_values('Divisiveness', ascending=False)
+
+    df_sel = df.head(10)
+
+    plot_data = make_word_cloud(df_sel, "Text", 500, 500)
+
+
+    response = app.response_class(
+        response=json.dumps(plot_data),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
