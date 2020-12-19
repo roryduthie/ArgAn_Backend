@@ -1147,7 +1147,7 @@ def get_sycophancy(graph, centra, l_nodes, l_node_speakers):
     new_df = agrees.merge(locs, how='left', on = ['speaker'])
 
     new_df['sycophancy'] = new_df['agreement'] / new_df['count']
-    return new_df
+    return new_df, agrees
 
 
 
@@ -1163,7 +1163,7 @@ def sycophancy_raw(ids):
     l_nodes = centra.get_l_node_list(graph)
     l_node_speakers = centra.get_l_node_speaker(graph, l_nodes)
 
-    syc_df = get_sycophancy(graph, centra, l_nodes, l_node_speakers)
+    syc_df, agrees_df = get_sycophancy(graph, centra, l_nodes, l_node_speakers)
     if syc_df.empty:
         response = app.response_class(
             response=json.dumps('No Agreements'),
@@ -1370,6 +1370,59 @@ def belligerence_raw(ids):
 
 
     data_dict = bell_df_sel.to_dict(orient='records')
+
+    response = app.response_class(
+        response=json.dumps(data_dict),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@app.route('/stimulating-raw/<ids>', methods=["GET"])
+def stimulating_raw(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    l_nodes = centra.get_l_node_list(graph)
+    l_node_speakers = centra.get_l_node_speaker(graph, l_nodes)
+
+    df_locs = pd.DataFrame(l_node_speakers, columns=['text', 'speaker'])
+    locs = df_locs['speaker'].str.strip().value_counts().to_frame().reset_index()
+    locs.columns = ['speaker', 'count']
+
+    syc_df, agrees_df = get_sycophancy(graph, centra, l_nodes, l_node_speakers)
+
+
+    interaction_pairs = centra.get_interactions(graph, l_nodes)
+    df_interactions = pd.DataFrame(interaction_pairs, columns=['speaker1', 'speaker2', 'interaction'])
+    sel_inters = df_interactions[['speaker1', 'interaction']]
+    sel_inters['speaker1'] = sel_inters['speaker1'].str.strip()
+
+    single_inters = sel_inters.groupby(['speaker1'])['interaction'].agg('sum').to_frame().reset_index()
+    single_inters.columns = ['speaker', 'interaction']
+
+    overall_df = single_inters.merge(agrees_df, how='left', on=['speaker'])
+    overall_df['agreement'] = overall_df['agreement'].fillna(1)
+
+    overall_df['total'] = overall_df['interaction'] + overall_df['agreement']
+
+    new_df = overall_df.merge(locs, how='left', on = ['speaker'])
+
+    new_df['stimulating'] = new_df['total'] / new_df['count']
+
+    if new_df.empty:
+        response = app.response_class(
+            response=json.dumps('No Conflict'),
+            status=200,
+            mimetype='application/json'
+        )
+        return response
+    new_df_sel = new_df[['speaker', 'stimulating']]
+
+
+    data_dict = new_df_sel.to_dict(orient='records')
 
     response = app.response_class(
         response=json.dumps(data_dict),
