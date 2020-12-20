@@ -38,6 +38,17 @@ def test():
     )
     return response
 
+def get_hevy_data(ids):
+    ids = list(map(str,ids))
+    datadict = {"mapIDs" : ids}
+    headers = {
+    'Content-Type': 'application/json',
+    }
+    data = json.dumps(datadict)
+    response = requests.post('http://tomcat.arg.tech/ArgStructSearch/search/hevy/get/mapID', headers=headers, data=data)
+    jsn = json.loads(response.text)
+    return jsn
+
 def is_map(text):
     arg_map = False
 
@@ -137,15 +148,49 @@ def get_graph_jsn(text, is_map):
 
     return graph, jsn
 
-
-
-
 def get_eigen_cent(graph):
 
     centra = Centrality()
     i_nodes = centra.get_eigen_centrality(graph)
 
     return i_nodes
+
+
+def get_peigen_cent(graph):
+
+    centra = Centrality()
+
+    l_node_i_node_list = centra.get_loc_prop_pair(graph)
+    i_nodes = centra.get_i_node_list(graph)
+    l_nodes = centra.get_l_node_list(graph)
+    l_node_speakers = centra.get_l_node_speaker(graph, l_nodes)
+    new_i_nodes = centra.get_i_node_speaker_list(i_nodes, l_nodes, l_node_i_node_list,centra)
+    new_i_node_df = pd.DataFrame(new_i_nodes, columns=['ID', 'text', 'speaker'])
+    new_i_node_df_sel = new_i_node_df[['ID', 'speaker']]
+    i_nodes = centra.get_eigen_centrality(graph)
+    i_node_df = pd.DataFrame(i_nodes, columns=['ID', 'Centrality', 'Text'])
+
+    new_df = i_node_df.merge(new_i_node_df_sel, how='left', on='ID')
+
+
+    return new_df
+
+@app.route('/peigen-cent-raw/<ids>', methods=["GET"])
+def peigen_cent_raw(ids):
+
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+    i_nodes_df = get_peigen_cent(graph)
+
+    data_dict = i_nodes_df .to_dict(orient='records')
+
+    response = app.response_class(
+        response=json.dumps(data_dict),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
 
 @app.route('/eigen-cent-raw/<ids>', methods=["GET"])
 def eigen_cent_raw(ids):
@@ -154,6 +199,7 @@ def eigen_cent_raw(ids):
     centra = Centrality()
     graph, jsn = get_graph_jsn(ids, arg_map)
     i_nodes = get_eigen_cent(graph)
+
 
 
     data_list = []
@@ -357,6 +403,56 @@ def get_cogency_ca(graph, centra):
 
     return cogency
 
+def get_pcogency(graph, centra):
+
+    l_node_i_node_list = centra.get_loc_prop_pair(graph)
+    i_nodes = centra.get_i_node_list(graph)
+    l_nodes = centra.get_l_node_list(graph)
+    l_node_speakers = centra.get_l_node_speaker(graph, l_nodes)
+    new_i_nodes = centra.get_i_node_speaker_list(i_nodes, l_nodes, l_node_i_node_list,centra)
+
+
+    yas = centra.get_ass_ya(graph)
+    i_nodes_yas = centra.get_ya_i_nodes(graph, yas)
+
+    ya_df = pd.DataFrame(i_nodes_yas, columns=['ID'])
+    ya_df['count'] = 1
+
+
+
+    i_node_ra_ca_list = centra.get_i_speaker_ra_ca_nodes(graph, new_i_nodes)
+
+    i_node_df = pd.DataFrame(i_node_ra_ca_list, columns=['ID', 'speaker', 'RA', 'CA'])
+
+    new_df = ya_df.merge(i_node_df, how='left', on='ID')
+    new_df['speaker'] = new_df['speaker'].str.strip()
+
+    sum_df = new_df.groupby(['speaker']).agg({'count':'sum','RA':'sum','CA':'sum'}).reset_index()
+
+    sum_df['cogency'] = sum_df['RA'] / sum_df['count']
+
+    sum_df_sel = sum_df[['speaker', 'cogency']]
+
+
+    return sum_df_sel
+
+@app.route('/pcogency-raw/<ids>', methods=["GET"])
+def pcogency_raw(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    cogency_df = get_pcogency(graph, centra)
+
+    data_dict = cogency_df.to_dict(orient='records')
+
+    response = app.response_class(
+        response=json.dumps(data_dict),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
 @app.route('/cogency-raw/<ids>', methods=["GET"])
 def cogency_raw(ids):
     arg_map = is_map(ids)
@@ -410,6 +506,48 @@ def get_correctness(graph, centra):
     correctness = len(ta_nodes) / len(l_nodes)
     return correctness
 
+def get_pcorrectness(graph, centra):
+
+    l_nodes = centra.get_l_node_list(graph)
+    ta_nodes = centra.get_l_ta_nodes_count(graph, l_nodes)
+
+    df_ta_nodes = pd.DataFrame(ta_nodes, columns=['text','Count'])
+    df_l_nodes = pd.DataFrame(l_nodes, columns=['ID','text'])
+
+    df_l_nodes['speaker'] = df_l_nodes['text'].str.split(':').str[0]
+    df_ta_nodes['speaker'] = df_ta_nodes['text'].str.split(':').str[0]
+
+    df_l_nodes['total'] = 1
+
+    ta_nodes = df_ta_nodes.groupby(['speaker'])['Count'].agg('sum').to_frame().reset_index()
+    ls = df_l_nodes.groupby(['speaker'])['total'].agg('sum').to_frame().reset_index()
+
+    new_df = ls.merge(ta_nodes, how='left', on='speaker')
+    new_df['Count'] = new_df['Count'].fillna(0)
+
+    new_df['correctness'] = new_df['Count'] / new_df['total']
+
+    new_df_sel = new_df[['speaker', 'correctness']]
+
+    return new_df_sel
+
+@app.route('/pcorrectness-raw/<ids>', methods=["GET"])
+def pcorrectness_raw(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    correctness_df = get_pcorrectness(graph, centra)
+
+    data_dict = correctness_df.to_dict(orient='records')
+
+    response = app.response_class(
+        response=json.dumps(data_dict),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
 @app.route('/correctness-raw/<ids>', methods=["GET"])
 def correctness_raw(ids):
     arg_map = is_map(ids)
@@ -458,6 +596,58 @@ def get_coherence(graph, centra):
     isos = centra.get_isolated_nodes(graph)
     coherence = 1/len(isos)
     return coherence
+
+def get_p_cohrerence(graph, centra):
+
+    l_node_i_node_list = centra.get_loc_prop_pair(graph)
+    i_nodes = centra.get_i_node_list(graph)
+    l_nodes = centra.get_l_node_list(graph)
+    l_node_speakers = centra.get_l_node_speaker(graph, l_nodes)
+    new_i_nodes = centra.get_i_node_speaker_list(i_nodes, l_nodes, l_node_i_node_list,centra)
+
+    df_i_nodes = pd.DataFrame(new_i_nodes, columns=['ID','Text', 'Speaker'])
+    df_i_nodes['Speaker'] = df_i_nodes['Speaker'].str.strip()
+
+    graph = centra.remove_redundant_nodes(graph)
+    isos = centra.get_isolated_nodes(graph)
+
+    df_isolates = pd.DataFrame(isos, columns=['ID'])
+    df_isolates['count'] = 1
+
+    new_i_df = df_i_nodes.merge(df_isolates, how='left', on='ID')
+    new_i_df['count'] = new_i_df['count'].fillna(0)
+
+    new_i_df['Speaker'] = new_i_df['Speaker'].str.strip()
+    isolates = new_i_df.groupby(['Speaker'])['count'].agg('sum').to_frame().reset_index()
+
+    isolates['coherence'] = 1/isolates['count']
+    isolates = isolates.replace([np.inf, -np.inf], np.nan)
+    isolates['coherence'] =isolates['coherence'].fillna(0)
+
+    isolates_sel = isolates[['Speaker', 'coherence']]
+
+
+
+
+    return isolates_sel
+
+
+@app.route('/pcoherence-raw/<ids>', methods=["GET"])
+def pcoherence_raw(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    coherence_df = get_p_cohrerence(graph, centra)
+
+    data_dict = coherence_df.to_dict(orient='records')
+
+    response = app.response_class(
+        response=json.dumps(data_dict),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
 
 @app.route('/coherence-raw/<ids>', methods=["GET"])
 def coherence_raw(ids):
@@ -508,6 +698,26 @@ def get_popularity(graph, centra):
     i_nodes = centra.get_i_node_ids(graph)
     yas, i_node_tups = centra.get_i_ya_nodes(graph, i_nodes)
     return i_node_tups
+
+def get_ppopularity(graph, centra):
+
+
+    l_node_i_node_list = centra.get_loc_prop_pair(graph)
+    i_nodes = centra.get_i_node_list(graph)
+    l_nodes = centra.get_l_node_list(graph)
+    l_node_speakers = centra.get_l_node_speaker(graph, l_nodes)
+    new_i_nodes = centra.get_i_node_speaker_list(i_nodes, l_nodes, l_node_i_node_list,centra)
+
+    new_i_node_df = pd.DataFrame(new_i_nodes, columns=['ID', 'Text', 'speaker'])
+
+    i_nodes = centra.get_i_node_ids(graph)
+    yas, i_node_tups = centra.get_i_ya_nodes(graph, i_nodes)
+
+    i_node_df = pd.DataFrame(i_node_tups, columns=['popularity', 'Text'])
+
+    merge_df = i_node_df.merge(new_i_node_df, how='left', on='Text')
+    pop_list = merge_df.to_dict(orient='records')
+    return pop_list
 
 def get_unpopularity(graph, centra):
     i_nodes = centra.get_i_node_ids(graph)
@@ -573,7 +783,22 @@ def unpopularity_vis(ids):
     )
     return response
 
+@app.route('/ppopularity-raw/<ids>', methods=["GET"])
+def ppopularity_raw(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
 
+    popularity_list = get_ppopularity(graph, centra)
+
+
+
+    response = app.response_class(
+        response=json.dumps(popularity_list),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
 
 @app.route('/popularity-raw/<ids>', methods=["GET"])
 def popularity_raw(ids):
@@ -652,6 +877,26 @@ def get_appeal(graph, centra, popularity_list):
     appeal_list = merge_df.to_records().tolist()
     return appeal_list
 
+def get_pappeal(graph, centra, popularity_list):
+
+    l_node_i_node_list = centra.get_loc_prop_pair(graph)
+    i_nodes = centra.get_i_node_list(graph)
+    l_nodes = centra.get_l_node_list(graph)
+    new_i_nodes = centra.get_i_node_speaker_list(i_nodes, l_nodes, l_node_i_node_list,centra)
+    popularity_2_list = centra.get_ra_ma_speaker_count(graph, new_i_nodes,centra)
+    df1 = pd.DataFrame(popularity_list, columns =['Val', 'Text'])
+    df2 = pd.DataFrame(popularity_2_list, columns =['Val', 'Text'])
+
+    df1 = df1.set_index(['Text'])
+    df2 = df2.set_index(['Text'])
+
+    merge_df = df1.add(df2, fill_value=0)
+    new_i_node_df = pd.DataFrame(new_i_nodes, columns=['ID', 'Text', 'speaker'])
+    new_df = merge_df.merge(new_i_node_df, how='left', on='Text')
+
+    appeal_list = new_df.to_dict(orient='records')
+    return appeal_list
+
 @app.route('/appeal-vis-view/<ids>', methods=["GET"])
 def appeal_vis_view(ids):
 
@@ -726,6 +971,22 @@ def appeal_raw(ids):
 
     popularity_list = get_popularity(graph, centra)
     appeal_list = get_appeal(graph, centra, popularity_list)
+
+    response = app.response_class(
+        response=json.dumps(appeal_list),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@app.route('/pappeal-raw/<ids>', methods=["GET"])
+def pappeal_raw(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    popularity_list = get_popularity(graph, centra)
+    appeal_list = get_pappeal(graph, centra, popularity_list)
 
     response = app.response_class(
         response=json.dumps(appeal_list),
@@ -816,6 +1077,36 @@ def get_divisiveness(graph, centra, i_nodes):
         i_node_div_tup = (node_id, text, div)
         node_div.append(i_node_div_tup)
     return node_div
+
+@app.route('/pdivisiveness-raw/<ids>', methods=["GET"])
+def pdivisiveness_raw(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    i_nodes = centra.get_i_node_list(graph)
+    divisiveness_list = get_divisiveness(graph, centra, i_nodes)
+
+    l_node_i_node_list = centra.get_loc_prop_pair(graph)
+    i_nodes = centra.get_i_node_list(graph)
+    l_nodes = centra.get_l_node_list(graph)
+    new_i_nodes = centra.get_i_node_speaker_list(i_nodes, l_nodes, l_node_i_node_list,centra)
+
+    div_df = pd.DataFrame(divisiveness_list, columns = ['ID', 'Text', 'Divisiveness'])
+    i_node_df = pd.DataFrame(new_i_nodes, columns = ['ID', 'Text', 'Speaker'])
+
+    i_node_df_sel = i_node_df[['ID', 'Speaker']]
+
+    new_df = div_df.merge(i_node_df_sel, how='left', on='ID')
+
+    div_list = new_df.to_dict(orient='records')
+
+    response = app.response_class(
+        response=json.dumps(div_list),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
 
 @app.route('/divisiveness-raw/<ids>', methods=["GET"])
 def divisiveness_raw(ids):
@@ -933,7 +1224,217 @@ def s_node_timeline_vis_view(ids):
 
     return render_template('display_graph.html',
                                div_placeholder=Markup(dv)
+                           )
+
+def make_treemap(dataframe, path):
+    fig = px.treemap(dataframe,
+        path=path
+    )
+
+    dv = plotly.io.to_html(fig, include_plotlyjs=False, full_html=False)
+    return dv
+
+@app.route('/hevy-hyp-evidence-vis-view/<ids>', methods=["GET"])
+def hevy_hyp_evidence_vis_view(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    l_node_i_node_list = centra.get_loc_prop_pair(graph)
+    i_nodes = centra.get_i_node_list(graph)
+    l_nodes = centra.get_l_node_list(graph)
+    new_i_nodes = centra.get_i_node_speaker_list(i_nodes, l_nodes, l_node_i_node_list,centra)
+    hypotheses_list = centra.get_hyp_evidence_nodes(graph, new_i_nodes)
+
+    names = []
+    parents = []
+
+    for hyps in hypotheses_list:
+        ID = hyps[0]
+        text = hyps[1]
+        speaker = hyps[2]
+        evidence = hyps[3]
+
+        if len(evidence) < 1:
+            parents.append('')
+            names.append(text)
+        else:
+
+            for evd in evidence:
+                parents.append(text)
+                names.append(evd)
+
+    df = pd.DataFrame({'hypotheses':parents, 'evidence':names})
+
+    dv = make_treemap(df, ['hypotheses', 'evidence'])
+
+    return render_template('display_graph.html',
+                               div_placeholder=Markup(dv)
                               )
+
+@app.route('/hevy-hyp-evidence-vis/<ids>', methods=["GET"])
+def hevy_hyp_evidence_vis(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    l_node_i_node_list = centra.get_loc_prop_pair(graph)
+    i_nodes = centra.get_i_node_list(graph)
+    l_nodes = centra.get_l_node_list(graph)
+    new_i_nodes = centra.get_i_node_speaker_list(i_nodes, l_nodes, l_node_i_node_list,centra)
+    hypotheses_list = centra.get_hyp_evidence_nodes(graph, new_i_nodes)
+
+    names = []
+    parents = []
+
+    for hyps in hypotheses_list:
+        ID = hyps[0]
+        text = hyps[1]
+        speaker = hyps[2]
+        evidence = hyps[3]
+
+        if len(evidence) < 1:
+            parents.append(text)
+            names.append('')
+        else:
+
+            for evd in evidence:
+                parents.append(text)
+                names.append(evd)
+
+    df = pd.DataFrame({'hypotheses':parents, 'evidence':names})
+
+    dv = make_treemap(df, ['hypotheses', 'evidence'])
+
+    response = app.response_class(
+        response=dv,
+        status=200,
+        mimetype='application/html'
+    )
+    return response
+
+    return render_template('display_graph.html',
+                               div_placeholder=Markup(dv)
+                              )
+
+@app.route('/hevy-hyp-evidence-raw/<ids>', methods=["GET"])
+def hevy_hyp_evidence_raw(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    l_node_i_node_list = centra.get_loc_prop_pair(graph)
+    i_nodes = centra.get_i_node_list(graph)
+    l_nodes = centra.get_l_node_list(graph)
+    new_i_nodes = centra.get_i_node_speaker_list(i_nodes, l_nodes, l_node_i_node_list,centra)
+    hypotheses_list = centra.get_hyp_evidence_nodes(graph, new_i_nodes)
+    hyp_df = pd.DataFrame(hypotheses_list, columns = ['ID', 'text', 'speaker', 'Evidence'])
+
+    data_dict = hyp_df.to_dict(orient='records')
+
+    response = app.response_class(
+        response=json.dumps(data_dict),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@app.route('/hevy-hyp-raw/<ids>', methods=["GET"])
+def hevy_hyp_raw(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+    l_node_i_node_list = centra.get_loc_prop_pair(graph)
+    i_nodes = centra.get_i_node_list(graph)
+    l_nodes = centra.get_l_node_list(graph)
+    new_i_nodes = centra.get_i_node_speaker_list(i_nodes, l_nodes, l_node_i_node_list,centra)
+    hypotheses_list = centra.get_hyp_i_nodes(graph, new_i_nodes)
+
+    hyp_df = pd.DataFrame(hypotheses_list, columns = ['ID', 'text', 'speaker'])
+
+    data_dict = hyp_df.to_dict(orient='records')
+
+    response = app.response_class(
+        response=json.dumps(data_dict),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@app.route('/hevy-event-raw/<ids>', methods=["GET"])
+def hevy_event_raw(ids):
+    arg_map = is_map(ids)
+    centra = Centrality()
+    graph, jsn = get_graph_jsn(ids, arg_map)
+
+
+    nodeset_list = []
+    if not arg_map:
+        data = load_nodesets_for_corpus(ids)
+        nodeset_list = data['nodeSets']
+    else:
+        nodeset_list.append(ids)
+
+    h_jsn = get_hevy_data(nodeset_list)
+    event_list = get_event_info(h_jsn['nodes'])
+
+    event_df = pd.DataFrame(event_list, columns = ['ID', 'Name', 'Agent', 'Object', 'Space', 'Time'])
+
+    data_dict = event_df.to_dict(orient='records')
+
+    response = app.response_class(
+        response=json.dumps(data_dict),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+
+def get_event_info(nodes):
+
+    event_list = []
+    involved_agents = []
+    involved_objects = []
+    location_list = []
+    timings_list = []
+    for node in nodes:
+
+        ntype = node['type']
+        if ntype == 'Event':
+            ID = node['nodeID']
+            try:
+                event_name = node['name']
+
+            except:
+                event_name = ''
+
+            try:
+                involved_agent = node['involvedAgent']
+
+            except:
+                involved_agent = ''
+
+            try:
+                involved_object = node['involved']
+
+            except:
+                involved_object = ''
+
+            try:
+                inSpace = node['inSpace']
+
+            except:
+                inSpace = ''
+
+            try:
+                circa = node['circa']
+
+            except:
+                circa = ''
+            event_list.append((ID, event_name, involved_agent, involved_object, inSpace, circa))
+    return event_list
+
 
 @app.route('/statistics-raw/<ids>', methods=["GET"])
 def statistics_raw(ids):
@@ -1414,7 +1915,7 @@ def stimulating_raw(ids):
 
     if new_df.empty:
         response = app.response_class(
-            response=json.dumps('No Conflict'),
+            response=json.dumps('No stimulating'),
             status=200,
             mimetype='application/json'
         )

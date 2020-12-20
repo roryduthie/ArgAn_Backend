@@ -307,6 +307,55 @@ class Centrality:
     def get_ass_ya(graph):
         ya_nodes =  [x for x,y in graph.nodes(data=True) if y['type']=='YA' and y['text']=='Asserting' or y['type']=='YA' and y['text']=='Hypothesising']
         return ya_nodes
+    @staticmethod
+    def get_hyp_i_nodes(graph, new_i_nodes):
+        hyp_nodes = []
+        for i_node in new_i_nodes:
+            ID = i_node[0]
+            text = i_node[1]
+            speaker = i_node[2]
+            node_preds = list(graph.predecessors(ID))
+
+            for node in node_preds:
+                node_type = graph.nodes[node]['type']
+                node_text = graph.nodes[node]['text']
+
+                if node_text == 'Hypothesising':
+                    hyp_nodes.append(i_node)
+        return hyp_nodes
+
+    @staticmethod
+    def get_hyp_evidence_nodes(graph, new_i_nodes):
+        hyp_nodes = []
+
+        for i_node in new_i_nodes:
+            hyp_flag = False
+            ID = i_node[0]
+            text = i_node[1]
+            speaker = i_node[2]
+            node_preds = list(graph.predecessors(ID))
+            evidence_nodes = []
+            for node in node_preds:
+                node_type = graph.nodes[node]['type']
+                node_text = graph.nodes[node]['text']
+
+                if node_text == 'Hypothesising':
+                    hyp_flag = True
+                if node_type == 'RA' or node_type == 'CA':
+                    s_preds = list(graph.predecessors(node))
+
+                    for ev_node in s_preds:
+                        ev_node_type = graph.nodes[ev_node]['type']
+                        ev_node_text = graph.nodes[ev_node]['text']
+
+                        if ev_node_type == 'I':
+                            evidence_nodes.append(ev_node_text)
+            if hyp_flag:
+                hyp_tup = (ID,text,speaker, evidence_nodes)
+                hyp_nodes.append(hyp_tup)
+                hyp_flag = False
+
+        return hyp_nodes
 
     @staticmethod
     def get_TAs(graph):
@@ -699,3 +748,35 @@ class Centrality:
                     i_count.append(i_count_tup)
 
         return i_count
+
+    @staticmethod
+    def get_l_ta_nodes_count(graph, l_nodes):
+        ta_list = []
+        for lnode in l_nodes:
+            l = lnode[0]
+            l_text = lnode[1]
+            node_succ = list(graph.predecessors(l))
+            for n in node_succ:
+                n_type = graph.nodes[n]['type']
+                if n_type == 'TA':
+                    ta_list.append((l_text, 1))
+
+        return ta_list
+
+    @staticmethod
+    def get_i_speaker_ra_ca_nodes(graph, i_nodes_speaker):
+        i_node_list = []
+        for i in i_nodes_speaker:
+            ID = i[0]
+            speaker = i[2]
+            node_succ = list(graph.predecessors(ID))
+            ra_count = 0
+            ca_count = 0
+            for n in node_succ:
+                n_type = graph.nodes[n]['type']
+                if n_type == 'RA':
+                    ra_count = ra_count + 1
+                if n_type == 'CA':
+                    ca_count = ca_count + 1
+            i_node_list.append((ID, speaker, ra_count, ca_count))
+        return i_node_list
