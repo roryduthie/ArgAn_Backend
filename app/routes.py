@@ -83,7 +83,7 @@ def save_to_cache(aifdb_id, jsn_data):
     directory = 'cache/'
     filename = str(aifdb_id) + '.json'
     full_file_name = directory + filename
-
+    #This error
     with open(os.path.join(application.root_path, full_file_name),"w") as fo:
         json.dump(jsn_data, fo)
 
@@ -103,6 +103,7 @@ def load_nodesets_from_cache(aifdb_id):
 
 def save_nodesets_to_cache(aifdb_id, jsn_data):
     directory = 'cache/'
+
     filename = str(aifdb_id) + '_nodesets.json'
     full_file_name = directory + filename
 
