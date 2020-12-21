@@ -80,7 +80,7 @@ def load_from_cache(aifdb_id):
     return file_found, data
 
 def save_to_cache(aifdb_id, jsn_data):
-    directory = './cache/'
+    directory = 'cache/'
     filename = str(aifdb_id) + '.json'
     full_file_name = directory + filename
 
@@ -102,7 +102,7 @@ def load_nodesets_from_cache(aifdb_id):
     return file_found, data
 
 def save_nodesets_to_cache(aifdb_id, jsn_data):
-    directory = './cache/'
+    directory = 'cache/'
     filename = str(aifdb_id) + '_nodesets.json'
     full_file_name = directory + filename
 
