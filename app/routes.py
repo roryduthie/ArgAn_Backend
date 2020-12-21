@@ -66,13 +66,13 @@ def load_nodesets_for_corpus(corpus_name):
     return data
 
 def load_from_cache(aifdb_id):
-    directory = './cache/'
+    directory = 'cache/'
     filename = str(aifdb_id) + '.json'
     full_file_name = directory + filename
     data = ''
     file_found = False
     try:
-        with application.open_resource(full_file_name) as json_file:
+        with open(os.path.join(application.root_path, full_file_name),'r') as json_file:
             data = json.load(json_file)
         file_found = True
     except:
@@ -88,13 +88,13 @@ def save_to_cache(aifdb_id, jsn_data):
         json.dump(jsn_data, fo)
 
 def load_nodesets_from_cache(aifdb_id):
-    directory = './cache/'
+    directory = 'cache/'
     filename = str(aifdb_id) + '_nodesets.json'
     full_file_name = directory + filename
     data = ''
     file_found = False
     try:
-        with application.open_resource(full_file_name) as json_file:
+        with open(os.path.join(application.root_path, full_file_name),'r') as json_file:
             data = json.load(json_file)
         file_found = True
     except:
