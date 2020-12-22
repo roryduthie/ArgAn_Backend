@@ -3,7 +3,7 @@ from . import application
 import pandas as pd
 import numpy as np
 from urllib.request import urlopen
-from application.centrality import Centrality
+from app.centrality import Centrality
 import requests
 import json
 import urllib
