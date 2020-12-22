@@ -1419,7 +1419,7 @@ def hevy_hyp_evidence_vis(ids):
 
     df = pd.DataFrame({'hypotheses':parents, 'evidence':names})
 
-    dv = make_treemap(df, ['hypotheses', 'evidence'])
+    dv = make_treemap(df, ['hypotheses', 'evidence'], None, 1000)
 
     response = application.response_class(
         response=dv,
