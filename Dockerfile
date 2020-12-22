@@ -8,6 +8,7 @@ RUN pip install --upgrade pip
 ADD requirements.txt .
 RUN pip install -r requirements.txt
 RUN pip install gunicorn
+RUN python -m spacy download en
 
 ADD app app
 ADD boot.sh ./
