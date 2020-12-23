@@ -1,7 +1,7 @@
 from flask import Flask
 import os
 
-app = Flask(__name__)
-app.secret_key = os.urandom(16)
+application = Flask(__name__)
+application.secret_key = os.urandom(16)
 
 from app import routes

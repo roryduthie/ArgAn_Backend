@@ -1,5 +1,5 @@
 from flask import render_template, request, redirect, session, Markup, send_file
-from . import app
+from . import application
 import pandas as pd
 import numpy as np
 from urllib.request import urlopen
@@ -22,17 +22,17 @@ import matplotlib.pyplot as plt
 matplotlib.use('Agg')
 
 
-@app.route('/')
-@app.route('/index')
+@application.route('/')
+@application.route('/index')
 def index():
     return redirect('/home')
 
-@app.route('/home')
+@application.route('/home')
 def test():
     data = {
         "user": "John Doe",
     }
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(data),
         status=200,
         mimetype='application/json'
@@ -98,7 +98,7 @@ def load_from_cache(aifdb_id):
     data = ''
     file_found = False
     try:
-        with open(os.path.join(app.root_path, full_file_name),'r') as json_file:
+        with open(os.path.join(application.root_path, full_file_name),'r') as json_file:
             data = json.load(json_file)
         file_found = True
     except:
@@ -111,7 +111,7 @@ def load_from_event_cache(aifdb_id):
     data = ''
     file_found = False
     try:
-        with open(os.path.join(app.root_path, full_file_name),'r') as json_file:
+        with open(os.path.join(application.root_path, full_file_name),'r') as json_file:
             data = json.load(json_file)
         file_found = True
     except:
@@ -123,7 +123,7 @@ def save_to_cache(aifdb_id, jsn_data):
     filename = str(aifdb_id) + '.json'
     full_file_name = directory + filename
     #This error
-    with open(os.path.join(app.root_path, full_file_name),"w") as fo:
+    with open(os.path.join(application.root_path, full_file_name),"w") as fo:
         json.dump(jsn_data, fo)
 
 def save_to_event_cache(aifdb_id, jsn_data):
@@ -131,7 +131,7 @@ def save_to_event_cache(aifdb_id, jsn_data):
     filename = str(aifdb_id) + '.json'
     full_file_name = directory + filename
     #This error
-    with open(os.path.join(app.root_path, full_file_name),"w") as fo:
+    with open(os.path.join(application.root_path, full_file_name),"w") as fo:
         json.dump(jsn_data, fo)
 
 def load_nodesets_from_cache(aifdb_id):
@@ -141,7 +141,7 @@ def load_nodesets_from_cache(aifdb_id):
     data = ''
     file_found = False
     try:
-        with open(os.path.join(app.root_path, full_file_name),'r') as json_file:
+        with open(os.path.join(application.root_path, full_file_name),'r') as json_file:
             data = json.load(json_file)
         file_found = True
     except:
@@ -155,7 +155,7 @@ def load_event_nodesets_from_cache(aifdb_id):
     data = ''
     file_found = False
     try:
-        with open(os.path.join(app.root_path, full_file_name),'r') as json_file:
+        with open(os.path.join(application.root_path, full_file_name),'r') as json_file:
             data = json.load(json_file)
         file_found = True
     except:
@@ -168,7 +168,7 @@ def save_nodesets_to_cache(aifdb_id, jsn_data):
     filename = str(aifdb_id) + '_nodesets.json'
     full_file_name = directory + filename
 
-    with open(os.path.join(app.root_path, full_file_name),"w") as fo:
+    with open(os.path.join(application.root_path, full_file_name),"w") as fo:
         json.dump(jsn_data, fo)
 
 def save_event_nodesets_to_cache(aifdb_id, jsn_data):
@@ -177,7 +177,7 @@ def save_event_nodesets_to_cache(aifdb_id, jsn_data):
     filename = str(aifdb_id) + '_nodesets.json'
     full_file_name = directory + filename
 
-    with open(os.path.join(app.root_path, full_file_name),"w") as fo:
+    with open(os.path.join(application.root_path, full_file_name),"w") as fo:
         json.dump(jsn_data, fo)
 
 def get_graph_jsn(text, is_map):
@@ -246,7 +246,7 @@ def get_peigen_cent(graph):
 
     return new_df
 
-@app.route('/peigen-cent-raw/<ids>', methods=["GET"])
+@application.route('/peigen-cent-raw/<ids>', methods=["GET"])
 def peigen_cent_raw(ids):
 
     arg_map = is_map(ids)
@@ -256,14 +256,14 @@ def peigen_cent_raw(ids):
 
     data_dict = i_nodes_df .to_dict(orient='records')
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(data_dict),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/eigen-cent-raw/<ids>', methods=["GET"])
+@application.route('/eigen-cent-raw/<ids>', methods=["GET"])
 def eigen_cent_raw(ids):
 
     arg_map = is_map(ids)
@@ -283,14 +283,14 @@ def eigen_cent_raw(ids):
         data_list.append(data_dict)
 
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(data_list),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/eigen-cent-vis-view/<ids>', methods=["GET"])
+@application.route('/eigen-cent-vis-view/<ids>', methods=["GET"])
 def eigen_cent_vis_view(ids):
 
     arg_map = is_map(ids)
@@ -308,7 +308,7 @@ def eigen_cent_vis_view(ids):
                                div_placeholder=Markup(dv)
                               )
 
-@app.route('/eigen-cent-vis/<ids>', methods=["GET"])
+@application.route('/eigen-cent-vis/<ids>', methods=["GET"])
 def eigen_cent_vis(ids):
 
     arg_map = is_map(ids)
@@ -324,7 +324,7 @@ def eigen_cent_vis(ids):
     dv = make_bar_chart(df_sel, "text", "cent", "Eigenvector Centrality", None, None)
 
 
-    response = app.response_class(
+    response = application.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
@@ -387,7 +387,7 @@ def make_sunburst_chart(dataframe, path, values, title,width, height):
     dv = plotly.io.to_html(fig, include_plotlyjs=False, full_html=False)
     return dv
 
-@app.route('/eigen-cent-cloud-vis-view/<ids>', methods=["GET"])
+@application.route('/eigen-cent-cloud-vis-view/<ids>', methods=["GET"])
 def eigen_cent_cloud_vis_view(ids):
 
     arg_map = is_map(ids)
@@ -405,7 +405,7 @@ def eigen_cent_cloud_vis_view(ids):
 
     return render_template('plot.html', plot_url=plot_data)
 
-@app.route('/eigen-cent-cloud-vis/<ids>', methods=["GET"])
+@application.route('/eigen-cent-cloud-vis/<ids>', methods=["GET"])
 def eigen_cent_cloud_vis(ids):
 
     arg_map = is_map(ids)
@@ -420,7 +420,7 @@ def eigen_cent_cloud_vis(ids):
     plot_data = make_word_cloud(df_sel, "text", 500, 500)
 
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(plot_data),
         status=200,
         mimetype='application/json'
@@ -512,7 +512,7 @@ def get_pcogency(graph, centra):
 
     return sum_df_sel
 
-@app.route('/pcogency-raw/<ids>', methods=["GET"])
+@application.route('/pcogency-raw/<ids>', methods=["GET"])
 def pcogency_raw(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -522,14 +522,14 @@ def pcogency_raw(ids):
 
     data_dict = cogency_df.to_dict(orient='records')
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(data_dict),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/pcogency-vis/<ids>', methods=["GET"])
+@application.route('/pcogency-vis/<ids>', methods=["GET"])
 def pcogency_vis(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -541,14 +541,14 @@ def pcogency_vis(ids):
 
     dv = make_bar_chart(cogency_df, "speaker", "cogency", "Participant Cogency", None, None)
 
-    response = app.response_class(
+    response = application.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
     )
     return response
 
-@app.route('/pcogency-vis-view/<ids>', methods=["GET"])
+@application.route('/pcogency-vis-view/<ids>', methods=["GET"])
 def pcogency_vis_view(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -564,7 +564,7 @@ def pcogency_vis_view(ids):
                                div_placeholder=Markup(dv)
                               )
 
-@app.route('/cogency-raw/<ids>', methods=["GET"])
+@application.route('/cogency-raw/<ids>', methods=["GET"])
 def cogency_raw(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -572,14 +572,14 @@ def cogency_raw(ids):
 
     cogency = get_cogency(graph, centra)
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(cogency),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/cogency-vis/<ids>', methods=["GET"])
+@application.route('/cogency-vis/<ids>', methods=["GET"])
 def cogency_vis(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -589,14 +589,14 @@ def cogency_vis(ids):
 
     dv = make_gauge_chart(cogency, 'Cogency', None, 1)
 
-    response = app.response_class(
+    response = application.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
     )
     return response
 
-@app.route('/cogency-vis-view/<ids>', methods=["GET"])
+@application.route('/cogency-vis-view/<ids>', methods=["GET"])
 def cogency_vis_view(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -642,7 +642,7 @@ def get_pcorrectness(graph, centra):
 
     return new_df_sel
 
-@app.route('/pcorrectness-raw/<ids>', methods=["GET"])
+@application.route('/pcorrectness-raw/<ids>', methods=["GET"])
 def pcorrectness_raw(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -652,14 +652,14 @@ def pcorrectness_raw(ids):
 
     data_dict = correctness_df.to_dict(orient='records')
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(data_dict),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/pcorrectness-vis-view/<ids>', methods=["GET"])
+@application.route('/pcorrectness-vis-view/<ids>', methods=["GET"])
 def pcorrectness_vis_view(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -674,7 +674,7 @@ def pcorrectness_vis_view(ids):
     return render_template('display_graph.html',
                                div_placeholder=Markup(dv)
                               )
-@app.route('/pcorrectness-vis/<ids>', methods=["GET"])
+@application.route('/pcorrectness-vis/<ids>', methods=["GET"])
 def pcorrectness_vis(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -686,7 +686,7 @@ def pcorrectness_vis(ids):
 
     dv = make_bar_chart(correctness_df, "speaker", "correctness", "Participant Correctness", None, None)
 
-    response = app.response_class(
+    response = application.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
@@ -697,7 +697,7 @@ def pcorrectness_vis(ids):
 
 
 
-@app.route('/correctness-raw/<ids>', methods=["GET"])
+@application.route('/correctness-raw/<ids>', methods=["GET"])
 def correctness_raw(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -705,7 +705,7 @@ def correctness_raw(ids):
 
     correctness = get_correctness(graph, centra)
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(correctness),
         status=200,
         mimetype='application/json'
@@ -713,7 +713,7 @@ def correctness_raw(ids):
     return response
 
 
-@app.route('/correctness-vis/<ids>', methods=["GET"])
+@application.route('/correctness-vis/<ids>', methods=["GET"])
 def correctness_vis(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -722,13 +722,13 @@ def correctness_vis(ids):
     correctness = get_correctness(graph, centra)
     dv = make_gauge_chart(correctness, 'Correctness', None, 1)
 
-    response = app.response_class(
+    response = application.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
     )
     return response
-@app.route('/correctness-vis-view/<ids>', methods=["GET"])
+@application.route('/correctness-vis-view/<ids>', methods=["GET"])
 def correctness_vis_view(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -781,7 +781,7 @@ def get_p_cohrerence(graph, centra):
     return isolates_sel
 
 
-@app.route('/pcoherence-raw/<ids>', methods=["GET"])
+@application.route('/pcoherence-raw/<ids>', methods=["GET"])
 def pcoherence_raw(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -791,14 +791,14 @@ def pcoherence_raw(ids):
 
     data_dict = coherence_df.to_dict(orient='records')
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(data_dict),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/pcoherence-vis/<ids>', methods=["GET"])
+@application.route('/pcoherence-vis/<ids>', methods=["GET"])
 def pcoherence_vis(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -808,14 +808,14 @@ def pcoherence_vis(ids):
 
     data_dict = coherence_df.to_dict(orient='records')
     dv = make_bar_chart(coherence_df, "Speaker", "coherence", "Participant Coherence", None, None)
-    response = app.response_class(
+    response = application.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
     )
     return response
 
-@app.route('/pcoherence-vis-view/<ids>', methods=["GET"])
+@application.route('/pcoherence-vis-view/<ids>', methods=["GET"])
 def pcoherence_vis_view(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -829,7 +829,7 @@ def pcoherence_vis_view(ids):
                                div_placeholder=Markup(dv)
                               )
 
-@app.route('/coherence-raw/<ids>', methods=["GET"])
+@application.route('/coherence-raw/<ids>', methods=["GET"])
 def coherence_raw(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -837,14 +837,14 @@ def coherence_raw(ids):
 
     coherence = get_coherence(graph, centra)
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(coherence),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/coherence-vis/<ids>', methods=["GET"])
+@application.route('/coherence-vis/<ids>', methods=["GET"])
 def coherence_vis(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -854,13 +854,13 @@ def coherence_vis(ids):
 
     dv = make_gauge_chart(coherence, 'Coherence', None, 1)
 
-    response = app.response_class(
+    response = application.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
     )
     return response
-@app.route('/coherence-vis-view/<ids>', methods=["GET"])
+@application.route('/coherence-vis-view/<ids>', methods=["GET"])
 def coherence_vis_view(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -905,7 +905,7 @@ def get_unpopularity(graph, centra):
     return i_node_tups
 
 
-@app.route('/unpopularity-raw/<ids>', methods=["GET"])
+@application.route('/unpopularity-raw/<ids>', methods=["GET"])
 def unpopularity_raw(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -913,14 +913,14 @@ def unpopularity_raw(ids):
 
     popularity_list = get_unpopularity(graph, centra)
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(popularity_list),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/unpopularity-vis-view/<ids>', methods=["GET"])
+@application.route('/unpopularity-vis-view/<ids>', methods=["GET"])
 def unpopularity_vis_view(ids):
 
     arg_map = is_map(ids)
@@ -939,7 +939,7 @@ def unpopularity_vis_view(ids):
                                div_placeholder=Markup(dv)
                               )
 
-@app.route('/unpopularity-vis/<ids>', methods=["GET"])
+@application.route('/unpopularity-vis/<ids>', methods=["GET"])
 def unpopularity_vis(ids):
 
     arg_map = is_map(ids)
@@ -956,14 +956,14 @@ def unpopularity_vis(ids):
     dv = make_bar_chart(df_sel, "Text", "UnPopularity", "UnPopularity Top 10",  None, None)
 
 
-    response = app.response_class(
+    response = application.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
     )
     return response
 
-@app.route('/ppopularity-raw/<ids>', methods=["GET"])
+@application.route('/ppopularity-raw/<ids>', methods=["GET"])
 def ppopularity_raw(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -973,14 +973,14 @@ def ppopularity_raw(ids):
 
 
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(popularity_list),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/popularity-raw/<ids>', methods=["GET"])
+@application.route('/popularity-raw/<ids>', methods=["GET"])
 def popularity_raw(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -988,14 +988,14 @@ def popularity_raw(ids):
 
     popularity_list = get_popularity(graph, centra)
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(popularity_list),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/popularity-vis-view/<ids>', methods=["GET"])
+@application.route('/popularity-vis-view/<ids>', methods=["GET"])
 def popularity_vis_view(ids):
 
     arg_map = is_map(ids)
@@ -1014,7 +1014,7 @@ def popularity_vis_view(ids):
                                div_placeholder=Markup(dv)
                               )
 
-@app.route('/popularity-vis/<ids>', methods=["GET"])
+@application.route('/popularity-vis/<ids>', methods=["GET"])
 def popularity_vis(ids):
 
     arg_map = is_map(ids)
@@ -1031,7 +1031,7 @@ def popularity_vis(ids):
     dv = make_bar_chart(df_sel, "Text", "Popularity", "Popularity Top 10",  None, None)
 
 
-    response = app.response_class(
+    response = application.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
@@ -1077,7 +1077,7 @@ def get_pappeal(graph, centra, popularity_list):
     appeal_list = new_df.to_dict(orient='records')
     return appeal_list
 
-@app.route('/appeal-vis-view/<ids>', methods=["GET"])
+@application.route('/appeal-vis-view/<ids>', methods=["GET"])
 def appeal_vis_view(ids):
 
     arg_map = is_map(ids)
@@ -1097,7 +1097,7 @@ def appeal_vis_view(ids):
                                div_placeholder=Markup(dv)
                               )
 
-@app.route('/appeal-vis/<ids>', methods=["GET"])
+@application.route('/appeal-vis/<ids>', methods=["GET"])
 def appeal_vis(ids):
 
     arg_map = is_map(ids)
@@ -1115,7 +1115,7 @@ def appeal_vis(ids):
     dv = make_bar_chart(df_sel, "Text", "Appeal", "Appeal Top 10",  None, None)
 
 
-    response = app.response_class(
+    response = application.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
@@ -1143,7 +1143,7 @@ def get_unappeal(graph, centra, popularity_list):
 
 
 
-@app.route('/appeal-raw/<ids>', methods=["GET"])
+@application.route('/appeal-raw/<ids>', methods=["GET"])
 def appeal_raw(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -1152,14 +1152,14 @@ def appeal_raw(ids):
     popularity_list = get_popularity(graph, centra)
     appeal_list = get_appeal(graph, centra, popularity_list)
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(appeal_list),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/pappeal-raw/<ids>', methods=["GET"])
+@application.route('/pappeal-raw/<ids>', methods=["GET"])
 def pappeal_raw(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -1168,14 +1168,14 @@ def pappeal_raw(ids):
     popularity_list = get_popularity(graph, centra)
     appeal_list = get_pappeal(graph, centra, popularity_list)
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(appeal_list),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/unappeal-raw/<ids>', methods=["GET"])
+@application.route('/unappeal-raw/<ids>', methods=["GET"])
 def unappeal_raw(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -1184,14 +1184,14 @@ def unappeal_raw(ids):
     popularity_list = get_unpopularity(graph, centra)
     appeal_list = get_unappeal(graph, centra, popularity_list)
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(appeal_list),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/unappeal-vis-view/<ids>', methods=["GET"])
+@application.route('/unappeal-vis-view/<ids>', methods=["GET"])
 def unappeal_vis_view(ids):
 
     arg_map = is_map(ids)
@@ -1211,7 +1211,7 @@ def unappeal_vis_view(ids):
                                div_placeholder=Markup(dv)
                               )
 
-@app.route('/unappeal-vis/<ids>', methods=["GET"])
+@application.route('/unappeal-vis/<ids>', methods=["GET"])
 def unappeal_vis(ids):
 
     arg_map = is_map(ids)
@@ -1229,7 +1229,7 @@ def unappeal_vis(ids):
     dv = make_bar_chart(df_sel, "Text", "UnAppeal", "UnAppeal Top 10",  None, None)
 
 
-    response = app.response_class(
+    response = application.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
@@ -1258,7 +1258,7 @@ def get_divisiveness(graph, centra, i_nodes):
         node_div.append(i_node_div_tup)
     return node_div
 
-@app.route('/pdivisiveness-raw/<ids>', methods=["GET"])
+@application.route('/pdivisiveness-raw/<ids>', methods=["GET"])
 def pdivisiveness_raw(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -1281,14 +1281,14 @@ def pdivisiveness_raw(ids):
 
     div_list = new_df.to_dict(orient='records')
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(div_list),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/divisiveness-raw/<ids>', methods=["GET"])
+@application.route('/divisiveness-raw/<ids>', methods=["GET"])
 def divisiveness_raw(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -1297,14 +1297,14 @@ def divisiveness_raw(ids):
     i_nodes = centra.get_i_node_list(graph)
     divisiveness_list = get_divisiveness(graph, centra, i_nodes)
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(divisiveness_list),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/divisiveness-vis-view/<ids>', methods=["GET"])
+@application.route('/divisiveness-vis-view/<ids>', methods=["GET"])
 def divisiveness_vis_view(ids):
 
     arg_map = is_map(ids)
@@ -1324,7 +1324,7 @@ def divisiveness_vis_view(ids):
                                div_placeholder=Markup(dv)
                               )
 
-@app.route('/divisiveness-vis/<ids>', methods=["GET"])
+@application.route('/divisiveness-vis/<ids>', methods=["GET"])
 def divisiveness_vis(ids):
 
     arg_map = is_map(ids)
@@ -1342,14 +1342,14 @@ def divisiveness_vis(ids):
     dv = make_bar_chart(df_sel, "Text", "Divisiveness", "Divisiveness Top 10", None, None)
 
 
-    response = app.response_class(
+    response = application.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
     )
     return response
 
-@app.route('/s-node-timeline-raw/<ids>', methods=["GET"])
+@application.route('/s-node-timeline-raw/<ids>', methods=["GET"])
 def s_node_timeline_raw(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -1362,14 +1362,14 @@ def s_node_timeline_raw(ids):
 
     timeline_list = df.to_dict(orient='records')
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(timeline_list),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/s-node-timeline-vis/<ids>', methods=["GET"])
+@application.route('/s-node-timeline-vis/<ids>', methods=["GET"])
 def s_node_timeline_vis(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -1382,14 +1382,14 @@ def s_node_timeline_vis(ids):
 
     dv = make_line_chart(df, 'TA Count', 'Node Count', 'Node Type', 'Node Type', 'Node Type', None, None)
 
-    response = app.response_class(
+    response = application.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
     )
     return response
 
-@app.route('/s-node-timeline-vis-view/<ids>', methods=["GET"])
+@application.route('/s-node-timeline-vis-view/<ids>', methods=["GET"])
 def s_node_timeline_vis_view(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -1418,7 +1418,7 @@ def make_treemap(dataframe, path, width, height):
     dv = plotly.io.to_html(fig, include_plotlyjs=False, full_html=False)
     return dv
 
-@app.route('/hevy-hyp-evidence-vis-view/<ids>', methods=["GET"])
+@application.route('/hevy-hyp-evidence-vis-view/<ids>', methods=["GET"])
 def hevy_hyp_evidence_vis_view(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -1456,7 +1456,7 @@ def hevy_hyp_evidence_vis_view(ids):
                                div_placeholder=Markup(dv)
                               )
 
-@app.route('/hevy-hyp-evidence-vis/<ids>', methods=["GET"])
+@application.route('/hevy-hyp-evidence-vis/<ids>', methods=["GET"])
 def hevy_hyp_evidence_vis(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -1490,7 +1490,7 @@ def hevy_hyp_evidence_vis(ids):
 
     dv = make_treemap(df, ['hypotheses', 'evidence'], None, 1000)
 
-    response = app.response_class(
+    response = application.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
@@ -1501,7 +1501,7 @@ def hevy_hyp_evidence_vis(ids):
                                div_placeholder=Markup(dv)
                               )
 
-@app.route('/hevy-hyp-evidence-raw/<ids>', methods=["GET"])
+@application.route('/hevy-hyp-evidence-raw/<ids>', methods=["GET"])
 def hevy_hyp_evidence_raw(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -1516,14 +1516,14 @@ def hevy_hyp_evidence_raw(ids):
 
     data_dict = hyp_df.to_dict(orient='records')
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(data_dict),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/hevy-hyp-raw/<ids>', methods=["GET"])
+@application.route('/hevy-hyp-raw/<ids>', methods=["GET"])
 def hevy_hyp_raw(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -1539,14 +1539,14 @@ def hevy_hyp_raw(ids):
 
     data_dict = hyp_df.to_dict(orient='records')
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(data_dict),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/object-vis/<ids>', methods=["GET"])
+@application.route('/object-vis/<ids>', methods=["GET"])
 def object_vis(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -1580,7 +1580,7 @@ def object_vis(ids):
     dv = make_bar_chart(actors, "Object", "Count", "Objects in Events", None, None)
 
 
-    response = app.response_class(
+    response = application.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
@@ -1588,7 +1588,7 @@ def object_vis(ids):
     return response
 
 
-@app.route('/object-vis-view/<ids>', methods=["GET"])
+@application.route('/object-vis-view/<ids>', methods=["GET"])
 def object_vis_view(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -1627,7 +1627,7 @@ def object_vis_view(ids):
                                div_placeholder=Markup(dv)
                               )
 
-@app.route('/actor-vis/<ids>', methods=["GET"])
+@application.route('/actor-vis/<ids>', methods=["GET"])
 def actor_vis(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -1661,14 +1661,14 @@ def actor_vis(ids):
     dv = make_bar_chart(actors, "Actor", "Count", "Actors in Events", None, None)
 
 
-    response = app.response_class(
+    response = application.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
     )
     return response
 
-@app.route('/actor-vis-view/<ids>', methods=["GET"])
+@application.route('/actor-vis-view/<ids>', methods=["GET"])
 def actor_vis_view(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -1765,7 +1765,7 @@ def get_lat_lon(locations):
             longs_lats.append((location,l_l[0], l_l[1]))
     return longs_lats
 
-@app.route('/event-location-vis-view/<ids>', methods=["GET"])
+@application.route('/event-location-vis-view/<ids>', methods=["GET"])
 def event_location_vis_view(ids):
 
     lon_list = []
@@ -1863,7 +1863,7 @@ def event_location_vis_view(ids):
                                div_placeholder=Markup(dv)
                               )
 
-@app.route('/event-location-vis/<ids>', methods=["GET"])
+@application.route('/event-location-vis/<ids>', methods=["GET"])
 def event_location_vis(ids):
 
     lon_list = []
@@ -1928,7 +1928,7 @@ def event_location_vis(ids):
         lon_list = []
         lat_list = []
         dv = make_map_plot(lat_list, lon_list, [])
-        response = app.response_class(
+        response = application.response_class(
             response=dv,
             status=200,
             mimetype='application/html'
@@ -1941,7 +1941,7 @@ def event_location_vis(ids):
             lon_list = []
             lat_list = []
             dv = make_map_plot(lat_list, lon_list, [])
-            response = app.response_class(
+            response = application.response_class(
                 response=dv,
                 status=200,
                 mimetype='application/html'
@@ -1963,14 +1963,14 @@ def event_location_vis(ids):
 
 
 
-    response = app.response_class(
+    response = application.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
     )
     return response
 
-@app.route('/hevy-event-vis-view/<ids>', methods=["GET"])
+@application.route('/hevy-event-vis-view/<ids>', methods=["GET"])
 def hevy_event_vis_view(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -2013,7 +2013,7 @@ def hevy_event_vis_view(ids):
 
     return render_template('display_graph.html', div_placeholder=Markup(html))
 
-@app.route('/hevy-event-vis/<ids>', methods=["GET"])
+@application.route('/hevy-event-vis/<ids>', methods=["GET"])
 def hevy_event_vis(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -2038,14 +2038,14 @@ def hevy_event_vis(ids):
 
     html = make_data_table(event_df)
 
-    response = app.response_class(
+    response = application.response_class(
         response=html,
         status=200,
         mimetype='application/html'
     )
     return response
 
-@app.route('/hevy-event-raw/<ids>', methods=["GET"])
+@application.route('/hevy-event-raw/<ids>', methods=["GET"])
 def hevy_event_raw(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -2068,7 +2068,7 @@ def hevy_event_raw(ids):
 
     data_dict = event_df.to_dict(orient='records')
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(data_dict),
         status=200,
         mimetype='application/json'
@@ -2126,7 +2126,7 @@ def get_event_info(nodes):
     return event_list
 
 
-@app.route('/statistics-raw/<ids>', methods=["GET"])
+@application.route('/statistics-raw/<ids>', methods=["GET"])
 def statistics_raw(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -2172,14 +2172,14 @@ def statistics_raw(ids):
 
     data_dict = overall_df.to_dict(orient='records')
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(data_dict),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/statistics-vis-view/<ids>', methods=["GET"])
+@application.route('/statistics-vis-view/<ids>', methods=["GET"])
 def statistics_vis_view(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -2229,7 +2229,7 @@ def statistics_vis_view(ids):
                                div_placeholder=Markup(dv)
                               )
 
-@app.route('/statistics-vis/<ids>', methods=["GET"])
+@application.route('/statistics-vis/<ids>', methods=["GET"])
 def statistics_vis(ids):
     arg_map = is_map(ids)
     centra = Centrality()
@@ -2275,14 +2275,14 @@ def statistics_vis(ids):
 
     dv = make_sunburst_chart(overall_df, ['type', 'text'], 'count', 'Overall Statistics' ,None, None)
 
-    response = app.response_class(
+    response = application.response_class(
         response=dv,
         status=200,
         mimetype='application/html'
     )
     return response
 
-@app.route('/divisiveness-cloud-vis-view/<ids>', methods=["GET"])
+@application.route('/divisiveness-cloud-vis-view/<ids>', methods=["GET"])
 def divisiveness_cloud_vis_view(ids):
 
     arg_map = is_map(ids)
@@ -2302,7 +2302,7 @@ def divisiveness_cloud_vis_view(ids):
 
     return render_template('plot.html', plot_url=plot_data)
 
-@app.route('/divisiveness-cloud-vis/<ids>', methods=["GET"])
+@application.route('/divisiveness-cloud-vis/<ids>', methods=["GET"])
 def divisiveness_cloud_vis(ids):
 
     arg_map = is_map(ids)
@@ -2319,7 +2319,7 @@ def divisiveness_cloud_vis(ids):
     plot_data = make_word_cloud(df_sel, "Text", 500, 500)
 
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(plot_data),
         status=200,
         mimetype='application/json'
@@ -2344,7 +2344,7 @@ def get_sycophancy(graph, centra, l_nodes, l_node_speakers):
 
 
 
-@app.route('/sycophancy-raw/<ids>', methods=["GET"])
+@application.route('/sycophancy-raw/<ids>', methods=["GET"])
 def sycophancy_raw(ids):
 
     arg_map = is_map(ids)
@@ -2356,7 +2356,7 @@ def sycophancy_raw(ids):
 
     syc_df, agrees_df = get_sycophancy(graph, centra, l_nodes, l_node_speakers)
     if syc_df.empty:
-        response = app.response_class(
+        response = application.response_class(
             response=json.dumps('No Agreements'),
             status=200,
             mimetype='application/json'
@@ -2367,7 +2367,7 @@ def sycophancy_raw(ids):
 
     data_dict = syc_df_sel.to_dict(orient='records')
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(data_dict),
         status=200,
         mimetype='application/json'
@@ -2397,7 +2397,7 @@ def get_idolatry(agreement_pairs, interaction_pairs):
 
 
 
-@app.route('/idolatry-raw/<ids>', methods=["GET"])
+@application.route('/idolatry-raw/<ids>', methods=["GET"])
 def idolatry_raw(ids):
 
     arg_map = is_map(ids)
@@ -2417,7 +2417,7 @@ def idolatry_raw(ids):
 
     idol_df = get_idolatry(agreement_pairs, interaction_pairs)
     if idol_df.empty:
-        response = app.response_class(
+        response = application.response_class(
             response=json.dumps('No Agreements'),
             status=200,
             mimetype='application/json'
@@ -2428,14 +2428,14 @@ def idolatry_raw(ids):
 
     data_dict = idol_df_sel.to_dict(orient='records')
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(data_dict),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/interaction-vis-view/<ids>', methods=["GET"])
+@application.route('/interaction-vis-view/<ids>', methods=["GET"])
 def interaction_vis_view(ids):
 
     arg_map = is_map(ids)
@@ -2466,7 +2466,7 @@ def interaction_vis_view(ids):
 
     return render_template('display_graph.html', div_placeholder=Markup(html))
 
-@app.route('/interaction-vis/<ids>', methods=["GET"])
+@application.route('/interaction-vis/<ids>', methods=["GET"])
 def interaction_vis(ids):
 
     arg_map = is_map(ids)
@@ -2495,7 +2495,7 @@ def interaction_vis(ids):
 
     #data_dict = inters_df_sel.to_dict(orient='records')
 
-    response = app.response_class(
+    response = application.response_class(
         response=html,
         status=200,
         mimetype='application/html'
@@ -2505,7 +2505,7 @@ def interaction_vis(ids):
 
 
 
-@app.route('/interactions-raw/<ids>', methods=["GET"])
+@application.route('/interactions-raw/<ids>', methods=["GET"])
 def interaction_raw(ids):
 
     arg_map = is_map(ids)
@@ -2524,7 +2524,7 @@ def interaction_raw(ids):
 
 
     if inters.empty:
-        response = app.response_class(
+        response = application.response_class(
             response=json.dumps('No Interactions'),
             status=200,
             mimetype='application/json'
@@ -2535,14 +2535,14 @@ def interaction_raw(ids):
 
     data_dict = inters_df_sel.to_dict(orient='records')
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(data_dict),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/responsiveness-raw/<ids>', methods=["GET"])
+@application.route('/responsiveness-raw/<ids>', methods=["GET"])
 def responsiveness_raw(ids):
 
     arg_map = is_map(ids)
@@ -2560,7 +2560,7 @@ def responsiveness_raw(ids):
 
 
     if resps.empty:
-        response = app.response_class(
+        response = application.response_class(
             response=json.dumps('No Questions'),
             status=200,
             mimetype='application/json'
@@ -2571,7 +2571,7 @@ def responsiveness_raw(ids):
 
     data_dict = resps_df_sel.to_dict(orient='records')
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(data_dict),
         status=200,
         mimetype='application/json'
@@ -2599,7 +2599,7 @@ def get_belligerence(graph, centra, l_nodes, l_node_speakers, i_node_speakers):
 
 
 
-@app.route('/belligerence-raw/<ids>', methods=["GET"])
+@application.route('/belligerence-raw/<ids>', methods=["GET"])
 def belligerence_raw(ids):
 
     arg_map = is_map(ids)
@@ -2617,7 +2617,7 @@ def belligerence_raw(ids):
 
     bell_df = get_belligerence(graph, centra, l_nodes, l_node_speakers, new_i_nodes)
     if bell_df.empty:
-        response = app.response_class(
+        response = application.response_class(
             response=json.dumps('No Conflict'),
             status=200,
             mimetype='application/json'
@@ -2628,14 +2628,14 @@ def belligerence_raw(ids):
 
     data_dict = bell_df_sel.to_dict(orient='records')
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(data_dict),
         status=200,
         mimetype='application/json'
     )
     return response
 
-@app.route('/stimulating-raw/<ids>', methods=["GET"])
+@application.route('/stimulating-raw/<ids>', methods=["GET"])
 def stimulating_raw(ids):
 
     arg_map = is_map(ids)
@@ -2670,7 +2670,7 @@ def stimulating_raw(ids):
     new_df['stimulating'] = new_df['total'] / new_df['count']
 
     if new_df.empty:
-        response = app.response_class(
+        response = application.response_class(
             response=json.dumps('No stimulating'),
             status=200,
             mimetype='application/json'
@@ -2681,7 +2681,7 @@ def stimulating_raw(ids):
 
     data_dict = new_df_sel.to_dict(orient='records')
 
-    response = app.response_class(
+    response = application.response_class(
         response=json.dumps(data_dict),
         status=200,
         mimetype='application/json'
