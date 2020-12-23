@@ -39,15 +39,40 @@ def test():
     )
     return response
 
-def get_hevy_data(ids):
-    ids = list(map(str,ids))
-    datadict = {"mapIDs" : ids}
-    headers = {
-    'Content-Type': 'application/json',
-    }
-    data = json.dumps(datadict)
-    response = requests.post('http://tomcat.arg.tech/ArgStructSearch/search/hevy/get/mapID', headers=headers, data=data)
-    jsn = json.loads(response.text)
+def get_hevy_data(ids, nodeset_data, corpus, is_map):
+
+    file_found = False
+    jsn = ''
+    if not is_map:
+        nodeset_file_found,nodeset_list = load_event_nodesets_from_cache(corpus)
+        if nodeset_file_found:
+            if nodeset_list == nodeset_data:
+                file_found, jsn = load_from_event_cache(corpus)
+            else:
+                file_found = False
+        else:
+            file_found = False
+    else:
+        file_found, jsn = load_from_event_cache(corpus)
+
+
+    if not file_found:
+
+        ids = list(map(str,ids))
+        datadict = {"mapIDs" : ids}
+        headers = {
+        'Content-Type': 'application/json',
+        }
+        data = json.dumps(datadict)
+        response = requests.post('http://tomcat.arg.tech/ArgStructSearch/search/hevy/get/mapID', headers=headers, data=data)
+        jsn = json.loads(response.text)
+
+        save_to_event_cache(corpus, jsn)
+
+        if not is_map:
+            save_event_nodesets_to_cache(corpus, nodeset_data)
+
+
     return jsn
 
 def is_map(text):
@@ -79,9 +104,30 @@ def load_from_cache(aifdb_id):
     except:
         file_found = False
     return file_found, data
+def load_from_event_cache(aifdb_id):
+    directory = 'event_cache/'
+    filename = str(aifdb_id) + '.json'
+    full_file_name = directory + filename
+    data = ''
+    file_found = False
+    try:
+        with open(os.path.join(application.root_path, full_file_name),'r') as json_file:
+            data = json.load(json_file)
+        file_found = True
+    except:
+        file_found = False
+    return file_found, data
 
 def save_to_cache(aifdb_id, jsn_data):
     directory = 'cache/'
+    filename = str(aifdb_id) + '.json'
+    full_file_name = directory + filename
+    #This error
+    with open(os.path.join(application.root_path, full_file_name),"w") as fo:
+        json.dump(jsn_data, fo)
+
+def save_to_event_cache(aifdb_id, jsn_data):
+    directory = 'event_cache/'
     filename = str(aifdb_id) + '.json'
     full_file_name = directory + filename
     #This error
@@ -102,8 +148,31 @@ def load_nodesets_from_cache(aifdb_id):
         file_found = False
     return file_found, data
 
+def load_event_nodesets_from_cache(aifdb_id):
+    directory = 'event_cache/'
+    filename = str(aifdb_id) + '_nodesets.json'
+    full_file_name = directory + filename
+    data = ''
+    file_found = False
+    try:
+        with open(os.path.join(application.root_path, full_file_name),'r') as json_file:
+            data = json.load(json_file)
+        file_found = True
+    except:
+        file_found = False
+    return file_found, data
+
 def save_nodesets_to_cache(aifdb_id, jsn_data):
     directory = 'cache/'
+
+    filename = str(aifdb_id) + '_nodesets.json'
+    full_file_name = directory + filename
+
+    with open(os.path.join(application.root_path, full_file_name),"w") as fo:
+        json.dump(jsn_data, fo)
+
+def save_event_nodesets_to_cache(aifdb_id, jsn_data):
+    directory = 'event_cache/'
 
     filename = str(aifdb_id) + '_nodesets.json'
     full_file_name = directory + filename
@@ -1485,13 +1554,15 @@ def object_vis(ids):
 
 
     nodeset_list = []
+    nodeset_data = ''
     if not arg_map:
         data = load_nodesets_for_corpus(ids)
+        nodeset_data = data
         nodeset_list = data['nodeSets']
     else:
         nodeset_list.append(ids)
 
-    h_jsn = get_hevy_data(nodeset_list)
+    h_jsn = get_hevy_data(nodeset_list, nodeset_data, ids, arg_map)
     event_list = get_event_info(h_jsn['nodes'])
 
     event_df = pd.DataFrame(event_list, columns = ['ID', 'Name', 'Agent', 'Object', 'Space', 'Place','Time'])
@@ -1525,13 +1596,15 @@ def object_vis_view(ids):
 
 
     nodeset_list = []
+    nodeset_data = ''
     if not arg_map:
         data = load_nodesets_for_corpus(ids)
+        nodeset_data = data
         nodeset_list = data['nodeSets']
     else:
         nodeset_list.append(ids)
 
-    h_jsn = get_hevy_data(nodeset_list)
+    h_jsn = get_hevy_data(nodeset_list, nodeset_data, ids, arg_map)
     event_list = get_event_info(h_jsn['nodes'])
 
     event_df = pd.DataFrame(event_list, columns = ['ID', 'Name', 'Agent', 'Object', 'Space', 'Place','Time'])
@@ -1562,13 +1635,15 @@ def actor_vis(ids):
 
 
     nodeset_list = []
+    nodeset_data = ''
     if not arg_map:
         data = load_nodesets_for_corpus(ids)
+        nodeset_data = data
         nodeset_list = data['nodeSets']
     else:
         nodeset_list.append(ids)
 
-    h_jsn = get_hevy_data(nodeset_list)
+    h_jsn = get_hevy_data(nodeset_list, nodeset_data, ids, arg_map)
     event_list = get_event_info(h_jsn['nodes'])
 
     event_df = pd.DataFrame(event_list, columns = ['ID', 'Name', 'Agent', 'Object', 'Space', 'Place','Time'])
@@ -1601,13 +1676,15 @@ def actor_vis_view(ids):
 
 
     nodeset_list = []
+    nodeset_data = ''
     if not arg_map:
         data = load_nodesets_for_corpus(ids)
+        nodeset_data = data
         nodeset_list = data['nodeSets']
     else:
         nodeset_list.append(ids)
 
-    h_jsn = get_hevy_data(nodeset_list)
+    h_jsn = get_hevy_data(nodeset_list, nodeset_data, ids, arg_map)
     event_list = get_event_info(h_jsn['nodes'])
 
     event_df = pd.DataFrame(event_list, columns = ['ID', 'Name', 'Agent', 'Object', 'Space', 'Place','Time'])
@@ -1699,13 +1776,15 @@ def event_location_vis_view(ids):
 
 
     nodeset_list = []
+    nodeset_data = ''
     if not arg_map:
         data = load_nodesets_for_corpus(ids)
+        nodeset_data = data
         nodeset_list = data['nodeSets']
     else:
         nodeset_list.append(ids)
 
-    h_jsn = get_hevy_data(nodeset_list)
+    h_jsn = get_hevy_data(nodeset_list, nodeset_data, ids, arg_map)
     event_list = get_event_info(h_jsn['nodes'])
 
     event_df = pd.DataFrame(event_list, columns = ['ID', 'Name', 'Agent', 'Object', 'Space', 'Place','Time'])
@@ -1795,13 +1874,15 @@ def event_location_vis(ids):
 
 
     nodeset_list = []
+    nodeset_data = ''
     if not arg_map:
         data = load_nodesets_for_corpus(ids)
+        nodeset_data = data
         nodeset_list = data['nodeSets']
     else:
         nodeset_list.append(ids)
 
-    h_jsn = get_hevy_data(nodeset_list)
+    h_jsn = get_hevy_data(nodeset_list, nodeset_data, ids, arg_map)
     event_list = get_event_info(h_jsn['nodes'])
 
     event_df = pd.DataFrame(event_list, columns = ['ID', 'Name', 'Agent', 'Object', 'Space', 'Place','Time'])
@@ -1897,13 +1978,15 @@ def hevy_event_vis_view(ids):
 
 
     nodeset_list = []
+    nodeset_data = ''
     if not arg_map:
         data = load_nodesets_for_corpus(ids)
+        nodeset_data = data
         nodeset_list = data['nodeSets']
     else:
         nodeset_list.append(ids)
 
-    h_jsn = get_hevy_data(nodeset_list)
+    h_jsn = get_hevy_data(nodeset_list, nodeset_data, ids, arg_map)
     event_list = get_event_info(h_jsn['nodes'])
 
     event_df = pd.DataFrame(event_list, columns = ['ID', 'Name', 'Agent', 'Object', 'Space', 'Place','Time'])
@@ -1938,13 +2021,15 @@ def hevy_event_vis(ids):
 
 
     nodeset_list = []
+    nodeset_data = ''
     if not arg_map:
         data = load_nodesets_for_corpus(ids)
+        nodeset_data = data
         nodeset_list = data['nodeSets']
     else:
         nodeset_list.append(ids)
 
-    h_jsn = get_hevy_data(nodeset_list)
+    h_jsn = get_hevy_data(nodeset_list, nodeset_data, ids, arg_map)
     event_list = get_event_info(h_jsn['nodes'])
 
     event_df = pd.DataFrame(event_list, columns = ['ID', 'Name', 'Agent', 'Object', 'Space','Place', 'Time'])
@@ -1968,13 +2053,15 @@ def hevy_event_raw(ids):
 
 
     nodeset_list = []
+    nodeset_data = ''
     if not arg_map:
         data = load_nodesets_for_corpus(ids)
+        nodeset_data = data
         nodeset_list = data['nodeSets']
     else:
         nodeset_list.append(ids)
 
-    h_jsn = get_hevy_data(nodeset_list)
+    h_jsn = get_hevy_data(nodeset_list, nodeset_data, ids, arg_map)
     event_list = get_event_info(h_jsn['nodes'])
 
     event_df = pd.DataFrame(event_list, columns = ['ID', 'Name', 'Agent', 'Object', 'Space', 'Place','Time'])
@@ -2409,7 +2496,7 @@ def interaction_vis(ids):
     #data_dict = inters_df_sel.to_dict(orient='records')
 
     response = application.response_class(
-        response=dv,
+        response=html,
         status=200,
         mimetype='application/html'
     )
